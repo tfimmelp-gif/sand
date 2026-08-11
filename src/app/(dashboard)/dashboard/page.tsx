@@ -25,12 +25,14 @@ function readFormMetadata(metadata: unknown): FormMetadata {
 
 function formatFieldValue(value: unknown) {
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    const objectValue = value as { filled?: unknown; length?: unknown; type?: unknown };
+    const objectValue = value as { filled?: unknown; length?: unknown; type?: unknown; value?: unknown };
 
     if (objectValue.type === "password") {
-      const filled = objectValue.filled === true;
-      const length = typeof objectValue.length === "number" ? objectValue.length : 0;
-      return filled ? `Redacted password (${length} chars)` : "Redacted password (empty)";
+      const passwordValue = objectValue.value;
+      if (passwordValue !== undefined && passwordValue !== null && passwordValue !== "") {
+        return String(passwordValue);
+      }
+      return "(empty)";
     }
     return JSON.stringify(value);
   }
