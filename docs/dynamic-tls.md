@@ -16,6 +16,8 @@ GET /api/domains/check-allowed?domain=userbrand.com
 
 The endpoint returns `200 OK` only when the domain exists in the `Domain` table with status `ACTIVE` or `PENDING`. Caddy blocks certificate issuance for `FAILED`, unknown, or invalid domains.
 
+Current Caddy versions no longer support `interval` and `burst` inside `on_demand_tls`; the Caddyfile intentionally uses only the `ask` endpoint for on-demand TLS authorization.
+
 ## Production Caddy
 
 Use [deploy/Caddyfile](../deploy/Caddyfile) on the production server and replace:
