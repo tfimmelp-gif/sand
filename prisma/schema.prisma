@@ -1,0 +1,129 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  WORKSPACE_USER
+}
+
+enum Status {
+  ACTIVE
+  PAUSED
+  BROKEN
+  PENDING
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  passwordHash     String
+  role             Role     @default(WORKSPACE_USER)
+  assignedDomainId String?
+  assignedDomain   Domain?  @relation("AssignedDomain", fields: [assignedDomainId], references: [id])
+  createdAt        DateTime @default(now())
+  links            Link[]
+  domains          Domain[]
+}
+
+model Domain {
+  id         String   @id @default(uuid())
+  hostString String   @unique
+  isGlobal   Boolean  @default(false)
+  status     Status   @default(PENDING)
+  createdAt  DateTime @default(now())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  links      Link[]
+  assignedUsers User[] @relation("AssignedDomain")
+}
+
+model Link {
+  id             String     @id @default(uuid())
+  slug           String
+  destinationUrl String
+  indexPagePreset String   @default("minimal")
+  status         Status     @default(ACTIVE)
+  createdAt      DateTime   @default(now())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  domainId       String
+  domain         Domain     @relation(fields: [domainId], references: [id])
+  clicks         ClickLog[]
+  activities     PageActivity[]
+
+  @@unique([domainId, slug])
+}
+
+model LinkPagePreset {
+  key         String   @id
+  name        String
+  description String
+  folderPath  String
+  htmlContent String
+  files       LinkPagePresetFile[]
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model LinkPagePresetFile {
+  id          String         @id @default(uuid())
+  presetKey   String
+  preset      LinkPagePreset @relation(fields: [presetKey], references: [key], onDelete: Cascade)
+  filePath    String
+  contentType String
+  content     String
+  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime       @default(now())
+
+  @@unique([presetKey, filePath])
+}
+
+model ClickLog {
+  id        String   @id @default(uuid())
+  linkId    String
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  timestamp DateTime @default(now())
+  country   String   @default("Unknown")
+  city      String   @default("Unknown")
+  browser   String   @default("Unknown")
+  os        String   @default("Unknown")
+  device    String   @default("Unknown")
+  referrer  String   @default("Direct")
+  ipAddress String   @default("Unknown")
+  isBot     Boolean  @default(false)
+  botReason String?
+  riskScore Int      @default(0)
+
+  @@index([linkId, timestamp])
+  @@index([isBot, timestamp])
+}
+
+model PageActivity {
+  id        String   @id @default(uuid())
+  linkId    String
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  eventType String
+  path      String   @default("/")
+  ipAddress String   @default("Unknown")
+  country   String   @default("Unknown")
+  city      String   @default("Unknown")
+  browser   String   @default("Unknown")
+  os        String   @default("Unknown")
+  device    String   @default("Unknown")
+  referrer  String   @default("Direct")
+  metadata  Json?
+  isBot     Boolean  @default(false)
+  botReason String?
+  riskScore Int      @default(0)
+  timestamp DateTime @default(now())
+
+  @@index([linkId, timestamp])
+  @@index([eventType, timestamp])
+  @@index([isBot, timestamp])
+}

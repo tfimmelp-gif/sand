@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env.local
+.env.production
+.env.*.local
+dist
+coverage
+*.tsbuildinfo
+dev-server.log
+dev-server.err.log
+npm-debug.log*
