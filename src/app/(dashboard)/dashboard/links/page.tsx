@@ -59,6 +59,10 @@ type AnalyticsSummary = {
   topDevices: Array<{ label: string; count: number }>;
 };
 
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 export default function UserWorkspaceLinksPage() {
   const [links, setLinks] = useState<LinkRecord[]>([]);
   const [slug, setSlug] = useState("");
@@ -77,7 +81,7 @@ export default function UserWorkspaceLinksPage() {
   async function refreshLinks() {
     const response = await fetch("/api/user/links");
     if (response.ok) {
-      setLinks(await response.json());
+      setLinks(asArray<LinkRecord>(await response.json()));
     }
   }
 
@@ -92,11 +96,11 @@ export default function UserWorkspaceLinksPage() {
       ]);
 
       if (linksResponse.ok) {
-        setLinks(await linksResponse.json());
+        setLinks(asArray<LinkRecord>(await linksResponse.json()));
       }
 
       if (domainsResponse.ok) {
-        const domainData = (await domainsResponse.json()) as Domain[];
+        const domainData = asArray<Domain>(await domainsResponse.json());
         setDomains(domainData);
         if (domainData.length > 0) {
           setSelectedDomain(domainData[0].id);
@@ -104,7 +108,7 @@ export default function UserWorkspaceLinksPage() {
       }
 
       if (analyticsResponse.ok) {
-        setHistoricalData(await analyticsResponse.json());
+        setHistoricalData(asArray<TimeseriesPoint>(await analyticsResponse.json()));
       }
 
       if (summaryResponse.ok) {
@@ -112,7 +116,7 @@ export default function UserWorkspaceLinksPage() {
       }
 
       if (presetsResponse.ok) {
-        const presetData = (await presetsResponse.json()) as PagePreset[];
+        const presetData = asArray<PagePreset>(await presetsResponse.json());
         setPresets(presetData);
         if (presetData.length > 0) {
           setSelectedPreset(presetData[0].key);

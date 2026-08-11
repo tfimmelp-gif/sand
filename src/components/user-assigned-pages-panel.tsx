@@ -44,6 +44,10 @@ type LinkMetric = {
   lastVisitAt: string | null;
 };
 
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 export function UserAssignedPagesPanel() {
   const [links, setLinks] = useState<LinkRecord[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -65,11 +69,11 @@ export function UserAssignedPagesPanel() {
     ]);
 
     if (linksResponse.ok) {
-      setLinks(await linksResponse.json());
+      setLinks(asArray<LinkRecord>(await linksResponse.json()));
     }
 
     if (metricsResponse.ok) {
-      setMetrics(await metricsResponse.json());
+      setMetrics(asArray<LinkMetric>(await metricsResponse.json()));
     }
   }
 
@@ -83,19 +87,19 @@ export function UserAssignedPagesPanel() {
       ]);
 
       if (linksResponse.ok) {
-        setLinks(await linksResponse.json());
+        setLinks(asArray<LinkRecord>(await linksResponse.json()));
       }
 
       if (domainsResponse.ok) {
-        setDomains(await domainsResponse.json());
+        setDomains(asArray<Domain>(await domainsResponse.json()));
       }
 
       if (presetsResponse.ok) {
-        setPresets(await presetsResponse.json());
+        setPresets(asArray<PagePreset>(await presetsResponse.json()));
       }
 
       if (metricsResponse.ok) {
-        setMetrics(await metricsResponse.json());
+        setMetrics(asArray<LinkMetric>(await metricsResponse.json()));
       }
     }
 

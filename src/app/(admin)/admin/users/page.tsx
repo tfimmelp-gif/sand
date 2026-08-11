@@ -46,11 +46,11 @@ type ManagedLink = {
   destinationUrl: string;
   indexPagePreset: string;
   status: string;
-  user: {
+  user?: {
     id: string;
     email: string;
   };
-  domain: {
+  domain?: {
     id: string;
     hostString: string;
     status: string;
@@ -86,6 +86,17 @@ type DomainDnsStatus = {
   recommendedRecord: string;
   error?: string;
 };
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function normalizePagePreset(preset: PagePreset): PagePreset {
+  return {
+    ...preset,
+    files: asArray(preset.files),
+  };
+}
 
 export default function SuperAdminUsersPage() {
   const router = useRouter();
@@ -141,28 +152,28 @@ export default function SuperAdminUsersPage() {
   async function fetchUsers() {
     const response = await fetch("/api/admin/users");
     if (response.ok) {
-      setUsers(await response.json());
+      setUsers(asArray<AdminUser>(await response.json()));
     }
   }
 
   async function fetchGlobalDomains() {
     const response = await fetch("/api/admin/domains");
     if (response.ok) {
-      setGlobalDomains(await response.json());
+      setGlobalDomains(asArray<GlobalDomain>(await response.json()));
     }
   }
 
   async function fetchManagedLinks() {
     const response = await fetch("/api/admin/links");
     if (response.ok) {
-      setManagedLinks(await response.json());
+      setManagedLinks(asArray<ManagedLink>(await response.json()));
     }
   }
 
   async function fetchPagePresets() {
     const response = await fetch("/api/admin/page-presets");
     if (response.ok) {
-      const presets = (await response.json()) as PagePreset[];
+      const presets = asArray<PagePreset>(await response.json()).map(normalizePagePreset);
       setPagePresets(presets);
       const activePreset = presets.find((preset) => preset.key === editingPresetKey) ?? presets[0] ?? null;
       setEditingPreset(activePreset ? { ...activePreset } : null);
@@ -288,14 +299,21 @@ export default function SuperAdminUsersPage() {
     let isMounted = true;
 
     async function verifyAdminSession() {
-      const response = await fetch("/api/auth/session");
-      const session = response.ok ? ((await response.json()) as { user?: { role?: string } }) : null;
+      let session: { user?: { role?: string } } | null = null;
+
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        session = response.ok ? ((await response.json()) as { user?: { role?: string } }) : null;
+      } catch {
+        session = null;
+      }
 
       if (!isMounted) {
         return;
       }
 
       if (session?.user?.role !== "SUPER_ADMIN") {
+        setIsCheckingAuth(false);
         router.replace("/admin/login");
         return;
       }
@@ -602,17 +620,21 @@ export default function SuperAdminUsersPage() {
           {linkMessage ? <p className="mt-4 text-sm font-medium text-slate-600">{linkMessage}</p> : null}
 
           <div className="mt-5 divide-y divide-slate-100">
-            {managedLinks.map((link) => (
+            {managedLinks.map((link) => {
+              const host = link.domain?.hostString ?? "unassigned-domain";
+              const userEmail = link.user?.email ?? "Unknown tenant";
+
+              return (
               <div key={link.id} className="flex flex-col gap-2 py-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-blue-700">
-                    {link.domain.hostString}/{link.slug}
+                    {host}/{link.slug}
                   </p>
                   <p className="truncate font-mono text-xs text-slate-500">
-                    Index page: {link.domain.hostString}/{link.slug}/index.html
+                    Index page: {host}/{link.slug}/index.html
                   </p>
                   <p className="truncate font-mono text-xs text-slate-500">
-                    Dashboard page: {link.domain.hostString}/{link.slug}/dashboard.html
+                    Dashboard page: {host}/{link.slug}/dashboard.html
                   </p>
                   <p className="text-xs font-semibold uppercase text-slate-500">
                     Preset: {pagePresets.find((preset) => preset.key === link.indexPagePreset)?.name ?? link.indexPagePreset}
@@ -635,14 +657,15 @@ export default function SuperAdminUsersPage() {
                       ))}
                     </select>
                   </label>
-                  <span>{link.user.email}</span>
+                  <span>{userEmail}</span>
                   <span>{link._count?.clicks ?? 0} clicks</span>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     {link.status}
                   </span>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </CardContent>
       </Card>
