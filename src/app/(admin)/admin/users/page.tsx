@@ -109,6 +109,7 @@ export default function SuperAdminUsersPage() {
   const [linkMessage, setLinkMessage] = useState("");
   const [presetMessage, setPresetMessage] = useState("");
   const [assigningDomainUserId, setAssigningDomainUserId] = useState("");
+  const [savingLinkPresetId, setSavingLinkPresetId] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [dnsStatuses, setDnsStatuses] = useState<Record<string, DomainDnsStatus>>({});
@@ -256,6 +257,31 @@ export default function SuperAdminUsersPage() {
     } catch {
       setLinkMessage(responseText ? `Unable to create tenant link. (${response.status}) ${responseText.slice(0, 180)}` : `Unable to create tenant link. (${response.status})`);
     }
+  }
+
+  async function handleManagedLinkPresetChange(linkId: string, indexPagePreset: string) {
+    setSavingLinkPresetId(linkId);
+    setLinkMessage("");
+
+    const response = await fetch(`/api/admin/links/${linkId}/page-preset`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ indexPagePreset }),
+    });
+
+    if (response.ok) {
+      const updatedLink = (await response.json()) as ManagedLink;
+      setManagedLinks((currentLinks) =>
+        currentLinks.map((link) => (link.id === updatedLink.id ? updatedLink : link)),
+      );
+      setLinkMessage("Link page preset updated. Refresh the public link to see the selected index.html.");
+      setSavingLinkPresetId("");
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to update link preset." }));
+    setLinkMessage(payload.error ?? "Unable to update link preset.");
+    setSavingLinkPresetId("");
   }
 
   useEffect(() => {
@@ -594,6 +620,21 @@ export default function SuperAdminUsersPage() {
                   <p className="truncate font-mono text-xs text-slate-500">{link.destinationUrl}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
+                    Page
+                    <select
+                      value={link.indexPagePreset}
+                      onChange={(event) => void handleManagedLinkPresetChange(link.id, event.target.value)}
+                      className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                      disabled={savingLinkPresetId === link.id}
+                    >
+                      {pagePresets.map((preset) => (
+                        <option key={preset.key} value={preset.key}>
+                          {preset.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <span>{link.user.email}</span>
                   <span>{link._count?.clicks ?? 0} clicks</span>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
