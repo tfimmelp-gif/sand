@@ -50,6 +50,7 @@ Set:
 - `APP_DOMAIN` and `NEXT_PUBLIC_APP_DOMAIN` to your platform domain, for example `yourplatform.com`
 - `NEXTAUTH_URL` to `https://yourplatform.com`
 - `PUBLIC_SERVER_IP` to the VPS public IP
+- `INTERNAL_APP_ORIGIN` to `http://app:3000` for Docker Compose
 - `CADDY_ADMIN_EMAIL` to your admin email
 - strong secrets for `NEXTAUTH_SECRET`, `INTERNAL_API_SECRET`, and `POSTGRES_PASSWORD`
 - real Upstash REST URL/token

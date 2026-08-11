@@ -47,12 +47,16 @@ async function getCachedDestination(cacheKey: string) {
   return payload.result ?? null;
 }
 
+function internalOrigin(url: URL) {
+  return process.env.INTERNAL_APP_ORIGIN || url.origin;
+}
+
 async function resolveDestination(url: URL, host: string, slug: string) {
   if (!process.env.INTERNAL_API_SECRET) {
     return null;
   }
 
-  const response = await fetch(`${url.origin}/api/internal/resolve-link`, {
+  const response = await fetch(`${internalOrigin(url)}/api/internal/resolve-link`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -78,7 +82,7 @@ async function renderIndexPage(url: URL, host: string, slug: string, filePath = 
     return null;
   }
 
-  const response = await fetch(`${url.origin}/api/internal/render-index`, {
+  const response = await fetch(`${internalOrigin(url)}/api/internal/render-index`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -114,7 +118,7 @@ function logClick(event: NextFetchEvent, url: URL, request: NextRequest, host: s
   };
 
   event.waitUntil(
-    fetch(`${url.origin}/api/internal/log-click`, {
+    fetch(`${internalOrigin(url)}/api/internal/log-click`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -151,7 +155,7 @@ function logPageActivity(
   };
 
   event.waitUntil(
-    fetch(`${url.origin}/api/internal/log-page-activity`, {
+    fetch(`${internalOrigin(url)}/api/internal/log-page-activity`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
