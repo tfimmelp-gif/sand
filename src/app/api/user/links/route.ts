@@ -6,6 +6,7 @@ import { isValidSlug, validateDestinationUrl } from "@/lib/links";
 import { ensureDefaultPagePresets, isPagePresetKey } from "@/lib/page-presets";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
+import { assignedDomainAccessWhere, getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -14,8 +15,17 @@ export async function GET() {
     return new NextResponse("Unauthenticated", { status: 401 });
   }
 
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
+  }
+
   const links = await prisma.link.findMany({
-    where: { userId: session.user.id },
+    where: {
+      userId: session.user.id,
+      ...linkAccessWhere(),
+    },
     orderBy: { createdAt: "desc" },
     include: {
       domain: {
@@ -42,6 +52,12 @@ export async function POST(req: Request) {
     return new NextResponse("Unauthenticated", { status: 401 });
   }
 
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
+  }
+
   const payload = (await req.json()) as {
     slug?: string;
     destinationUrl?: string;
@@ -63,8 +79,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid destination URL." }, { status: 400 });
   }
 
-  const tenant = await prisma.user.findUnique({
-    where: { id: session.user.id },
+  const tenant = await prisma.user.findFirst({
+    where: {
+      id: session.user.id,
+      ...assignedDomainAccessWhere(),
+    },
     select: {
       assignedDomainId: true,
     },

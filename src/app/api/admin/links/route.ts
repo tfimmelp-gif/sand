@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { parseExpiryInput } from "@/lib/expiration";
 import { isValidSlug, validateDestinationUrl } from "@/lib/links";
 import { ensureDefaultPagePresets, isPagePresetKey } from "@/lib/page-presets";
 import { prisma } from "@/lib/prisma";
@@ -48,12 +49,14 @@ export async function POST(req: Request) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const { userId, domainId, slug, destinationUrl, indexPagePreset } = (await req.json()) as {
+  const { userId, domainId, slug, destinationUrl, indexPagePreset, expiresAt, expiryBundle } = (await req.json()) as {
     userId?: string;
     domainId?: string;
     slug?: string;
     destinationUrl?: string;
     indexPagePreset?: string;
+    expiresAt?: string | null;
+    expiryBundle?: string | null;
   };
   const selectedPreset = indexPagePreset && isPagePresetKey(indexPagePreset) ? indexPagePreset : "minimal";
 
@@ -110,6 +113,7 @@ export async function POST(req: Request) {
         slug,
         destinationUrl: parsedDestination,
         indexPagePreset: selectedPreset,
+        expiresAt: parseExpiryInput({ expiresAt, expiryBundle }),
         domainId: domain.id,
         userId: tenant.id,
       },

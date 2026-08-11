@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
 function topCounts<T extends string>(values: T[]) {
   const counts = new Map<string, number>();
@@ -24,9 +25,18 @@ export async function GET() {
     return new NextResponse("Unauthenticated", { status: 401 });
   }
 
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
+  }
+
   const [links, clicks, activities] = await Promise.all([
     prisma.link.findMany({
-      where: { userId: session.user.id },
+      where: {
+        userId: session.user.id,
+        ...linkAccessWhere(),
+      },
       select: {
         id: true,
         status: true,
@@ -39,7 +49,10 @@ export async function GET() {
     }),
     prisma.clickLog.findMany({
       where: {
-        link: { userId: session.user.id },
+        link: {
+          userId: session.user.id,
+          ...linkAccessWhere(),
+        },
       },
       select: {
         country: true,
@@ -53,7 +66,10 @@ export async function GET() {
     }),
     prisma.pageActivity.findMany({
       where: {
-        link: { userId: session.user.id },
+        link: {
+          userId: session.user.id,
+          ...linkAccessWhere(),
+        },
       },
       select: {
         eventType: true,

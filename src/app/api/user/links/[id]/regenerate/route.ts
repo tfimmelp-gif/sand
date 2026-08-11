@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { generateSlug, isValidSlug } from "@/lib/links";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
+import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -15,6 +16,12 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   if (!session) {
     return new NextResponse("Unauthenticated", { status: 401 });
+  }
+
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
   }
 
   const { id } = await context.params;
@@ -30,6 +37,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     where: {
       id,
       userId: session.user.id,
+      ...linkAccessWhere(),
     },
     include: {
       domain: {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getRequestIp, parseUserAgent } from "@/lib/request-insights";
+import { publicLinkAccessWhere } from "@/lib/tenant-access";
 import { evaluateTrafficQuality } from "@/lib/traffic-quality";
 
 export async function POST(req: Request) {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   const link = await prisma.link.findFirst({
     where: {
       slug: payload.slug,
-      domain: { hostString: payload.host },
+      ...publicLinkAccessWhere(payload.host),
     },
     select: { id: true },
   });

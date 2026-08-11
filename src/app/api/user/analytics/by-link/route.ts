@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
 type LinkMetric = {
   linkId: string;
@@ -30,8 +31,17 @@ export async function GET() {
     return new NextResponse("Unauthenticated", { status: 401 });
   }
 
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
+  }
+
   const links = await prisma.link.findMany({
-    where: { userId: session.user.id },
+    where: {
+      userId: session.user.id,
+      ...linkAccessWhere(),
+    },
     select: {
       id: true,
       clicks: {

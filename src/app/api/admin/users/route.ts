@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 
 import { authOptions } from "@/lib/auth";
+import { parseExpiryInput } from "@/lib/expiration";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -20,6 +21,9 @@ export async function GET() {
       role: true,
       createdAt: true,
       assignedDomainId: true,
+      assignedDomainExpiresAt: true,
+      tenantAccessActive: true,
+      tenantAccessExpiresAt: true,
       assignedDomain: {
         select: {
           id: true,
@@ -46,9 +50,14 @@ export async function PATCH(req: Request) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const { userId, assignedDomainId } = (await req.json()) as {
+  const { userId, assignedDomainId, assignedDomainExpiresAt, assignedDomainExpiryBundle, tenantAccessActive, tenantAccessExpiresAt, tenantAccessBundle } = (await req.json()) as {
     userId?: string;
     assignedDomainId?: string | null;
+    assignedDomainExpiresAt?: string | null;
+    assignedDomainExpiryBundle?: string | null;
+    tenantAccessActive?: boolean;
+    tenantAccessExpiresAt?: string | null;
+    tenantAccessBundle?: string | null;
   };
 
   if (!userId) {
@@ -69,16 +78,40 @@ export async function PATCH(req: Request) {
     }
   }
 
+  const data: {
+    assignedDomainId: string | null;
+    assignedDomainExpiresAt?: Date | null;
+    tenantAccessActive?: boolean;
+    tenantAccessExpiresAt?: Date | null;
+  } = {
+    assignedDomainId: assignedDomainId || null,
+  };
+
+  if (!assignedDomainId || assignedDomainExpiresAt !== undefined || assignedDomainExpiryBundle !== undefined) {
+    data.assignedDomainExpiresAt = assignedDomainId
+      ? parseExpiryInput({ expiresAt: assignedDomainExpiresAt, expiryBundle: assignedDomainExpiryBundle })
+      : null;
+  }
+
+  if (typeof tenantAccessActive === "boolean") {
+    data.tenantAccessActive = tenantAccessActive;
+  }
+
+  if (tenantAccessExpiresAt !== undefined || tenantAccessBundle !== undefined) {
+    data.tenantAccessExpiresAt = parseExpiryInput({ expiresAt: tenantAccessExpiresAt, expiryBundle: tenantAccessBundle });
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
-    data: {
-      assignedDomainId: assignedDomainId || null,
-    },
+    data,
     select: {
       id: true,
       email: true,
       role: true,
       assignedDomainId: true,
+      assignedDomainExpiresAt: true,
+      tenantAccessActive: true,
+      tenantAccessExpiresAt: true,
       assignedDomain: {
         select: {
           id: true,

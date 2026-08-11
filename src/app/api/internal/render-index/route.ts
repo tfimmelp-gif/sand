@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { DEFAULT_PAGE_PRESETS, ensureDefaultPagePresets, renderIndexHtml } from "@/lib/page-presets";
 import { prisma } from "@/lib/prisma";
+import { publicLinkAccessWhere } from "@/lib/tenant-access";
 
 function normalizeSlug(slug: string) {
   return slug
@@ -34,11 +35,7 @@ export async function POST(req: Request) {
   const link = await prisma.link.findFirst({
     where: {
       slug: normalizedSlug,
-      status: "ACTIVE",
-      domain: {
-        hostString: host,
-        status: "ACTIVE",
-      },
+      ...publicLinkAccessWhere(host),
     },
     select: {
       destinationUrl: true,

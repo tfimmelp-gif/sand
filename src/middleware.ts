@@ -25,34 +25,6 @@ function pathnameToPageFile(pathname: string) {
   };
 }
 
-async function getCachedDestination(cacheKey: string) {
-  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  if (!redisUrl || !redisToken || redisToken === "your_redis_token_here") {
-    return null;
-  }
-
-  let response: Response;
-
-  try {
-    response = await fetch(`${redisUrl}/get/${encodeURIComponent(cacheKey)}`, {
-      headers: {
-        Authorization: `Bearer ${redisToken}`,
-      },
-    });
-  } catch {
-    return null;
-  }
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const payload = (await response.json()) as { result?: string | null };
-  return payload.result ?? null;
-}
-
 function internalOrigin(url: URL) {
   return process.env.INTERNAL_APP_ORIGIN || url.origin;
 }
@@ -256,14 +228,6 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
         "Cache-Control": "no-store",
       },
     });
-  }
-
-  const cacheKey = `link:${host}:${slug}`;
-  const cachedDestination = await getCachedDestination(cacheKey);
-
-  if (cachedDestination) {
-    logClick(event, url, request, host, slug);
-    return NextResponse.redirect(cachedDestination, 302);
   }
 
   const resolvedDestination = await resolveDestination(url, host, slug);

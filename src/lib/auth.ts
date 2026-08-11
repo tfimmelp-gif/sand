@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
+import { isExpired } from "@/lib/expiration";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -33,6 +34,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (credentials.expectedRole && user.role !== credentials.expectedRole) {
+          return null;
+        }
+
+        if (user.role === "WORKSPACE_USER" && (!user.tenantAccessActive || isExpired(user.tenantAccessExpiresAt))) {
           return null;
         }
 

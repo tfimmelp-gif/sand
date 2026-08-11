@@ -25,10 +25,16 @@ model User {
   passwordHash     String
   role             Role     @default(WORKSPACE_USER)
   assignedDomainId String?
+  assignedDomainExpiresAt DateTime?
+  tenantAccessActive Boolean @default(true)
+  tenantAccessExpiresAt DateTime?
   assignedDomain   Domain?  @relation("AssignedDomain", fields: [assignedDomainId], references: [id])
   createdAt        DateTime @default(now())
   links            Link[]
   domains          Domain[]
+
+  @@index([assignedDomainExpiresAt])
+  @@index([tenantAccessExpiresAt])
 }
 
 model Domain {
@@ -49,6 +55,7 @@ model Link {
   destinationUrl String
   indexPagePreset String   @default("minimal")
   status         Status     @default(ACTIVE)
+  expiresAt      DateTime?
   createdAt      DateTime   @default(now())
   userId         String
   user           User       @relation(fields: [userId], references: [id])
@@ -58,6 +65,7 @@ model Link {
   activities     PageActivity[]
 
   @@unique([domainId, slug])
+  @@index([expiresAt])
 }
 
 model LinkPagePreset {

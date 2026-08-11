@@ -7,12 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { formatExpiry } from "@/lib/expiration";
 
 type AdminUser = {
   id: string;
   email: string;
   role: string;
   assignedDomainId?: string | null;
+  assignedDomainExpiresAt?: string | null;
+  tenantAccessActive: boolean;
+  tenantAccessExpiresAt?: string | null;
   assignedDomain?: {
     id: string;
     hostString: string;
@@ -45,6 +49,7 @@ type ManagedLink = {
   slug: string;
   destinationUrl: string;
   indexPagePreset: string;
+  expiresAt?: string | null;
   status: string;
   user?: {
     id: string;
@@ -113,6 +118,7 @@ export default function SuperAdminUsersPage() {
   const [linkTenantId, setLinkTenantId] = useState("");
   const [linkDomainId, setLinkDomainId] = useState("");
   const [linkPagePreset, setLinkPagePreset] = useState("minimal");
+  const [linkExpiryBundle, setLinkExpiryBundle] = useState("none");
   const [linkSlug, setLinkSlug] = useState("");
   const [linkDestination, setLinkDestination] = useState("");
   const [message, setMessage] = useState("");
@@ -121,6 +127,11 @@ export default function SuperAdminUsersPage() {
   const [presetMessage, setPresetMessage] = useState("");
   const [assigningDomainUserId, setAssigningDomainUserId] = useState("");
   const [savingLinkPresetId, setSavingLinkPresetId] = useState("");
+  const [savingTenantAccessUserId, setSavingTenantAccessUserId] = useState("");
+  const [tenantAccessBundles, setTenantAccessBundles] = useState<Record<string, string>>({});
+  const [domainExpiryBundles, setDomainExpiryBundles] = useState<Record<string, string>>({});
+  const [linkExpiryBundles, setLinkExpiryBundles] = useState<Record<string, string>>({});
+  const [savingLinkExpiryId, setSavingLinkExpiryId] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [dnsStatuses, setDnsStatuses] = useState<Record<string, DomainDnsStatus>>({});
@@ -250,12 +261,14 @@ export default function SuperAdminUsersPage() {
         slug: linkSlug,
         destinationUrl: linkDestination,
         indexPagePreset: linkPagePreset,
+        expiryBundle: linkExpiryBundle,
       }),
     });
 
     if (response.ok) {
       setLinkSlug("");
       setLinkDestination("");
+      setLinkExpiryBundle("none");
       setLinkMessage("Tenant link created and assigned.");
       await Promise.all([fetchManagedLinks(), fetchUsers()]);
       return;
@@ -268,6 +281,29 @@ export default function SuperAdminUsersPage() {
     } catch {
       setLinkMessage(responseText ? `Unable to create tenant link. (${response.status}) ${responseText.slice(0, 180)}` : `Unable to create tenant link. (${response.status})`);
     }
+  }
+
+  async function handleLinkExpiryChange(linkId: string) {
+    setSavingLinkExpiryId(linkId);
+    setLinkMessage("");
+
+    const response = await fetch(`/api/admin/links/${linkId}/expiry`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expiryBundle: linkExpiryBundles[linkId] ?? "none" }),
+    });
+
+    if (response.ok) {
+      const updatedLink = (await response.json()) as ManagedLink;
+      setManagedLinks((currentLinks) => currentLinks.map((link) => (link.id === updatedLink.id ? updatedLink : link)));
+      setLinkMessage("URL expiry updated.");
+      setSavingLinkExpiryId("");
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to update URL expiry." }));
+    setLinkMessage(payload.error ?? "Unable to update URL expiry.");
+    setSavingLinkExpiryId("");
   }
 
   async function handleManagedLinkPresetChange(linkId: string, indexPagePreset: string) {
@@ -402,6 +438,7 @@ export default function SuperAdminUsersPage() {
       body: JSON.stringify({
         userId,
         assignedDomainId: assignedDomainId || null,
+        assignedDomainExpiryBundle: domainExpiryBundles[userId] ?? "none",
       }),
     });
 
@@ -415,6 +452,32 @@ export default function SuperAdminUsersPage() {
     const payload = await response.json().catch(() => ({ error: "Unable to assign domain." }));
     setMessage(payload.error ?? "Unable to assign domain.");
     setAssigningDomainUserId("");
+  }
+
+  async function handleTenantAccessBundle(userId: string, tenantAccessActive = true) {
+    setSavingTenantAccessUserId(userId);
+    setMessage("");
+
+    const response = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        tenantAccessActive,
+        tenantAccessBundle: tenantAccessActive ? tenantAccessBundles[userId] ?? "1m" : "none",
+      }),
+    });
+
+    if (response.ok) {
+      setMessage(tenantAccessActive ? "Tenant access bundle approved." : "Tenant access deactivated.");
+      await fetchUsers();
+      setSavingTenantAccessUserId("");
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to update tenant access." }));
+    setMessage(payload.error ?? "Unable to update tenant access.");
+    setSavingTenantAccessUserId("");
   }
 
   async function handleCheckDomainDns(domain: GlobalDomain) {
@@ -479,7 +542,22 @@ export default function SuperAdminUsersPage() {
         </div>
       </div>
 
-      <Card>
+      <nav className="sticky top-0 z-10 flex flex-wrap gap-2 rounded-lg border border-white/10 bg-slate-950/80 p-3 text-sm font-bold text-slate-200 shadow-xl shadow-black/20 backdrop-blur">
+        <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#tenant-access">
+          Tenant Access
+        </a>
+        <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#managed-links">
+          Managed URLs
+        </a>
+        <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#presets">
+          Presets
+        </a>
+        <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#domain-pool">
+          Domains
+        </a>
+      </nav>
+
+      <Card id="tenant-access">
         <CardHeader className="bg-sky-500/10">
           <CardTitle className="flex items-center gap-3">
             <span className="dashboard-icon h-8 w-8 text-sky-300">
@@ -522,7 +600,7 @@ export default function SuperAdminUsersPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="managed-links">
         <CardHeader className="bg-violet-500/10">
           <CardTitle className="flex items-center gap-3">
             <span className="dashboard-icon h-8 w-8 text-violet-300">
@@ -603,6 +681,20 @@ export default function SuperAdminUsersPage() {
               </select>
             </label>
             <label className="text-sm font-medium text-slate-700">
+              URL Expiry
+              <select
+                value={linkExpiryBundle}
+                onChange={(event) => setLinkExpiryBundle(event.target.value)}
+                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
+              >
+                <option value="none">No expiry</option>
+                <option value="1w">1 week</option>
+                <option value="2w">2 weeks</option>
+                <option value="1m">1 month</option>
+                <option value="3m">3 months</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
               Destination URL
               <input
                 type="url"
@@ -640,6 +732,9 @@ export default function SuperAdminUsersPage() {
                     Preset: {pagePresets.find((preset) => preset.key === link.indexPagePreset)?.name ?? link.indexPagePreset}
                   </p>
                   <p className="truncate font-mono text-xs text-slate-500">{link.destinationUrl}</p>
+                  <p className="text-xs font-semibold uppercase text-slate-500">
+                    URL access: {formatExpiry(link.expiresAt)}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
                   <label className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
@@ -659,6 +754,28 @@ export default function SuperAdminUsersPage() {
                   </label>
                   <span>{userEmail}</span>
                   <span>{link._count?.clicks ?? 0} clicks</span>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
+                    Expiry
+                    <select
+                      value={linkExpiryBundles[link.id] ?? "none"}
+                      onChange={(event) => setLinkExpiryBundles((current) => ({ ...current, [link.id]: event.target.value }))}
+                      className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                    >
+                      <option value="none">No expiry</option>
+                      <option value="1w">1 week</option>
+                      <option value="2w">2 weeks</option>
+                      <option value="1m">1 month</option>
+                      <option value="3m">3 months</option>
+                    </select>
+                  </label>
+                  <Button
+                    type="button"
+                    className="h-8 bg-violet-600 px-3 hover:bg-violet-500"
+                    disabled={savingLinkExpiryId === link.id}
+                    onClick={() => void handleLinkExpiryChange(link.id)}
+                  >
+                    Set Expiry
+                  </Button>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     {link.status}
                   </span>
@@ -670,7 +787,7 @@ export default function SuperAdminUsersPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="presets">
         <CardHeader className="bg-emerald-500/10">
           <CardTitle className="flex items-center gap-3">
             <span className="dashboard-icon h-8 w-8 text-emerald-300">
@@ -794,7 +911,7 @@ export default function SuperAdminUsersPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="domain-pool">
         <CardHeader className="bg-cyan-500/10">
           <CardTitle className="flex items-center gap-3">
             <span className="dashboard-icon h-8 w-8 text-cyan-300">
@@ -912,6 +1029,7 @@ export default function SuperAdminUsersPage() {
                 <th className="py-3 pr-4 font-semibold">Email</th>
                 <th className="py-3 pr-4 font-semibold">Role</th>
                 <th className="py-3 pr-4 font-semibold">Assigned Domain</th>
+                <th className="py-3 pr-4 font-semibold">Tenant Panel</th>
                 <th className="py-3 pr-4 font-semibold">Links</th>
                 <th className="py-3 pr-4 font-semibold">Domains</th>
                 <th className="py-3 font-semibold">Created</th>
@@ -938,14 +1056,81 @@ export default function SuperAdminUsersPage() {
                             </option>
                           ))}
                         </select>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <select
+                            value={domainExpiryBundles[user.id] ?? "none"}
+                            onChange={(event) => setDomainExpiryBundles((current) => ({ ...current, [user.id]: event.target.value }))}
+                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                          >
+                            <option value="none">No domain expiry</option>
+                            <option value="1w">1 week</option>
+                            <option value="2w">2 weeks</option>
+                            <option value="1m">1 month</option>
+                            <option value="3m">3 months</option>
+                          </select>
+                          <Button
+                            type="button"
+                            className="h-8 bg-sky-600 px-3 hover:bg-sky-500"
+                            disabled={assigningDomainUserId === user.id}
+                            onClick={() => void handleAssignTenantDomain(user.id, user.assignedDomainId ?? "")}
+                          >
+                            Save Domain Time
+                          </Button>
+                        </div>
                       {user.assignedDomain ? (
                         <span className="mt-1 block text-xs text-slate-400">
-                          Active domain: {user.assignedDomain.hostString}
+                          Active domain: {user.assignedDomain.hostString} / {formatExpiry(user.assignedDomainExpiresAt)}
                         </span>
                       ) : null}
                       </>
                     ) : (
                       <span className="text-slate-500">System access</span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4 text-slate-600">
+                    {user.role === "WORKSPACE_USER" ? (
+                      <div className="min-w-56 space-y-2">
+                        <span
+                          className={
+                            user.tenantAccessActive
+                              ? "inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
+                              : "inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700"
+                          }
+                        >
+                          {user.tenantAccessActive ? "Active" : "Inactive"}
+                        </span>
+                        <p className="text-xs text-slate-400">{formatExpiry(user.tenantAccessExpiresAt)}</p>
+                        <div className="flex flex-wrap gap-2">
+                          <select
+                            value={tenantAccessBundles[user.id] ?? "1m"}
+                            onChange={(event) => setTenantAccessBundles((current) => ({ ...current, [user.id]: event.target.value }))}
+                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                          >
+                            <option value="1w">1 week</option>
+                            <option value="2w">2 weeks</option>
+                            <option value="1m">1 month</option>
+                            <option value="3m">3 months</option>
+                          </select>
+                          <Button
+                            type="button"
+                            className="h-8 bg-emerald-600 px-3 hover:bg-emerald-500"
+                            disabled={savingTenantAccessUserId === user.id}
+                            onClick={() => void handleTenantAccessBundle(user.id, true)}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            type="button"
+                            className="h-8 bg-red-600 px-3 hover:bg-red-500"
+                            disabled={savingTenantAccessUserId === user.id}
+                            onClick={() => void handleTenantAccessBundle(user.id, false)}
+                          >
+                            Deactivate
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-slate-500">Unlimited</span>
                     )}
                   </td>
                   <td className="py-3 pr-4 text-slate-600">{user._count?.links ?? 0}</td>

@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAssignedPagesPanel } from "@/components/user-assigned-pages-panel";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 import { qualityLabel } from "@/lib/traffic-quality";
 
 type FormMetadata = {
@@ -89,6 +90,12 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    redirect("/login");
+  }
+
   const [
     linkCount,
     domainCount,
@@ -99,19 +106,19 @@ export default async function DashboardPage() {
     recentActivities,
     recentFormSubmissions,
   ] = await Promise.all([
-    prisma.link.count({ where: { userId: session.user.id } }),
+    prisma.link.count({ where: { userId: session.user.id, ...linkAccessWhere() } }),
     prisma.domain.count({ where: { OR: [{ userId: session.user.id }, { isGlobal: true }] } }),
-    prisma.clickLog.count({ where: { link: { userId: session.user.id } } }),
-    prisma.pageActivity.count({ where: { eventType: "page_view", link: { userId: session.user.id } } }),
-    prisma.pageActivity.count({ where: { eventType: "form_submit", link: { userId: session.user.id } } }),
+    prisma.clickLog.count({ where: { link: { userId: session.user.id, ...linkAccessWhere() } } }),
+    prisma.pageActivity.count({ where: { eventType: "page_view", link: { userId: session.user.id, ...linkAccessWhere() } } }),
+    prisma.pageActivity.count({ where: { eventType: "form_submit", link: { userId: session.user.id, ...linkAccessWhere() } } }),
     prisma.link.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user.id, ...linkAccessWhere() },
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { domain: { select: { hostString: true, status: true } } },
     }),
     prisma.pageActivity.findMany({
-      where: { link: { userId: session.user.id } },
+      where: { link: { userId: session.user.id, ...linkAccessWhere() } },
       orderBy: { timestamp: "desc" },
       take: 8,
       include: {
@@ -126,7 +133,7 @@ export default async function DashboardPage() {
     prisma.pageActivity.findMany({
       where: {
         eventType: "form_submit",
-        link: { userId: session.user.id },
+        link: { userId: session.user.id, ...linkAccessWhere() },
       },
       orderBy: { timestamp: "desc" },
       take: 25,

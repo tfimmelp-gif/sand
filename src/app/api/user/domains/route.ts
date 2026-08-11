@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { normalizeHost, isValidHostname } from "@/lib/domains";
+import { getTenantAccess, assignedDomainAccessWhere } from "@/lib/tenant-access";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -12,9 +13,19 @@ export async function GET() {
     return new NextResponse("Unauthenticated", { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      id: session.user.id,
+      ...assignedDomainAccessWhere(),
+    },
     select: {
+      assignedDomainExpiresAt: true,
       assignedDomain: {
         select: {
           id: true,
@@ -39,6 +50,12 @@ export async function POST(req: Request) {
 
   if (!session) {
     return new NextResponse("Unauthenticated", { status: 401 });
+  }
+
+  const access = await getTenantAccess(session.user.id);
+
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
   }
 
   const { hostString } = (await req.json()) as { hostString?: string };

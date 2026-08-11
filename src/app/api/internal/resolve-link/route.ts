@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
+import { publicLinkAccessWhere } from "@/lib/tenant-access";
 
 function normalizeSlug(slug: string) {
   return slug
@@ -31,11 +32,7 @@ export async function POST(req: Request) {
   const link = await prisma.link.findFirst({
     where: {
       slug: normalizedSlug,
-      status: "ACTIVE",
-      domain: {
-        hostString: host,
-        status: "ACTIVE",
-      },
+      ...publicLinkAccessWhere(host),
     },
     select: {
       destinationUrl: true,
