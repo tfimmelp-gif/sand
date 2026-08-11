@@ -33,4 +33,4 @@ COPY --from=builder /app/next.config.js ./next.config.js
 USER nextjs
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["node", ".next/standalone/server.js"]

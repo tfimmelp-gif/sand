@@ -33,11 +33,17 @@ async function getCachedDestination(cacheKey: string) {
     return null;
   }
 
-  const response = await fetch(`${redisUrl}/get/${encodeURIComponent(cacheKey)}`, {
-    headers: {
-      Authorization: `Bearer ${redisToken}`,
-    },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${redisUrl}/get/${encodeURIComponent(cacheKey)}`, {
+      headers: {
+        Authorization: `Bearer ${redisToken}`,
+      },
+    });
+  } catch {
+    return null;
+  }
 
   if (!response.ok) {
     return null;
