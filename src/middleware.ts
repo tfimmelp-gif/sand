@@ -245,6 +245,19 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     return new NextResponse("Page not found", { status: 404 });
   }
 
+  const html = await renderIndexPage(url, host, slug);
+
+  if (html) {
+    logClick(event, url, request, host, slug);
+    logPageActivity(event, url, request, host, slug, "page_view");
+    return new NextResponse(html.body, {
+      headers: {
+        "Content-Type": html.contentType,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const cacheKey = `link:${host}:${slug}`;
   const cachedDestination = await getCachedDestination(cacheKey);
 
