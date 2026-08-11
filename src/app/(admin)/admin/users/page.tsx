@@ -249,8 +249,13 @@ export default function SuperAdminUsersPage() {
       return;
     }
 
-    const payload = await response.json().catch(() => ({ error: "Unable to create tenant link." }));
-    setLinkMessage(payload.error ?? "Unable to create tenant link.");
+    const responseText = await response.text();
+    try {
+      const payload = JSON.parse(responseText) as { error?: string };
+      setLinkMessage(payload.error ?? `Unable to create tenant link. (${response.status})`);
+    } catch {
+      setLinkMessage(responseText ? `Unable to create tenant link. (${response.status}) ${responseText.slice(0, 180)}` : `Unable to create tenant link. (${response.status})`);
+    }
   }
 
   useEffect(() => {
