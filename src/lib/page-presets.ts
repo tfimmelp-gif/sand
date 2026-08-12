@@ -275,12 +275,15 @@ export function renderIndexHtml(
 ) {
   const adminDestinationUrl = values.adminDestinationUrl ?? values.destinationUrl;
   const destinationUrl = values.redirectSource === "PRESET_CONTROLLED" ? "#" : adminDestinationUrl;
-  const rendered = htmlContent
+  const rendered = rewritePresetAssetUrls(
+    htmlContent
     .replaceAll("{{adminDestinationUrl}}", adminDestinationUrl)
     .replaceAll("{{destinationUrl}}", destinationUrl)
     .replaceAll("{{host}}", values.host)
     .replaceAll("{{shortUrl}}", values.shortUrl)
-    .replaceAll("{{slug}}", values.slug);
+      .replaceAll("{{slug}}", values.slug),
+    values.slug,
+  );
 
   if (!rendered.toLowerCase().includes("</body>")) {
     return rendered;
@@ -386,4 +389,26 @@ data[key] = field.value;
 </script>`;
 
   return rendered.replace(/<\/body>/i, `${tracker}</body>`);
+}
+
+function rewritePresetAssetUrls(html: string, slug: string) {
+  const safeSlug = slug.replace(/"/g, "");
+  const shouldRewrite = (value: string) =>
+    value.startsWith("/") &&
+    !value.startsWith("//") &&
+    !value.startsWith("/api/") &&
+    !value.startsWith("/_next/") &&
+    !value.startsWith(`/${safeSlug}/`);
+
+  return html
+    .replace(/\b(src|href|poster|action)=("|')([^"']+)\2/gi, (match, attr: string, quote: string, value: string) => {
+      if (!shouldRewrite(value)) {
+        return match;
+      }
+
+      return `${attr}=${quote}/${safeSlug}${value}${quote}`;
+    })
+    .replace(/url\((["']?)(\/(?!\/|api\/|_next\/)[^)"']+)\1\)/gi, (_match, quote: string, value: string) => {
+      return `url(${quote}/${safeSlug}${value}${quote})`;
+    });
 }

@@ -25,6 +25,33 @@ function pathnameToPageFile(pathname: string) {
   };
 }
 
+function inferPageFileFromReferer(request: NextRequest, host: string, pathname: string) {
+  const cleanPath = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+
+  if (!cleanPath || cleanPath.includes("..")) {
+    return null;
+  }
+
+  const referer = request.headers.get("referer");
+  if (!referer) {
+    return null;
+  }
+
+  try {
+    const refererUrl = new URL(referer);
+    if (normalizeHost(refererUrl.host) !== host) {
+      return null;
+    }
+
+    const refererPageFile = pathnameToPageFile(refererUrl.pathname);
+    const slug = refererPageFile?.slug ?? pathnameToSlug(refererUrl.pathname);
+
+    return slug ? { slug, filePath: cleanPath } : null;
+  } catch {
+    return null;
+  }
+}
+
 function internalOrigin(url: URL) {
   return process.env.INTERNAL_APP_ORIGIN || url.origin;
 }
@@ -74,7 +101,7 @@ async function renderIndexPage(url: URL, host: string, slug: string, filePath = 
   }
 
   return {
-    body: await response.text(),
+    body: await response.arrayBuffer(),
     contentType: response.headers.get("content-type") || "text/html; charset=utf-8",
   };
 }
@@ -149,7 +176,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const host = normalizeHost(request.headers.get("host") || "");
   const appDomain = normalizeHost(process.env.NEXT_PUBLIC_APP_DOMAIN || "");
   const isIndexHtmlAlias = /\/index\.html$/i.test(url.pathname);
-  const pageFile = pathnameToPageFile(url.pathname);
+  const pageFile = pathnameToPageFile(url.pathname) ?? inferPageFileFromReferer(request, host, url.pathname);
   const slug = pathnameToSlug(url.pathname);
   const ipAddress = getRequestIp(request.headers);
 

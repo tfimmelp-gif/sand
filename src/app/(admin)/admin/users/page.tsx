@@ -77,6 +77,7 @@ type PagePreset = {
     filePath: string;
     contentType: string;
     content: string;
+    contentEncoding?: string;
   }>;
 };
 
@@ -113,6 +114,8 @@ export default function SuperAdminUsersPage() {
   const [editingPresetKey, setEditingPresetKey] = useState("minimal");
   const [editingPreset, setEditingPreset] = useState<PagePreset | null>(null);
   const [editingFilePath, setEditingFilePath] = useState("index.html");
+  const [presetZipFile, setPresetZipFile] = useState<File | null>(null);
+  const [isUploadingPresetZip, setIsUploadingPresetZip] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [globalDomainHost, setGlobalDomainHost] = useState("");
@@ -459,6 +462,42 @@ export default function SuperAdminUsersPage() {
     setPresetMessage(payload.error ?? "Unable to save preset.");
   }
 
+  async function handleUploadPresetZip() {
+    setPresetMessage("");
+
+    if (!editingPreset || !presetZipFile) {
+      setPresetMessage("Choose a preset and upload a .zip package.");
+      return;
+    }
+
+    setIsUploadingPresetZip(true);
+    const formData = new FormData();
+    formData.set("key", editingPreset.key);
+    formData.set("name", editingPreset.name);
+    formData.set("description", editingPreset.description);
+    formData.set("archive", presetZipFile);
+
+    const response = await fetch("/api/admin/page-presets", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.ok) {
+      const preset = normalizePagePreset(await response.json());
+      setEditingPreset(preset);
+      setEditingFilePath("index.html");
+      setPresetZipFile(null);
+      setPresetMessage("Preset ZIP uploaded. index.html, dashboard.html, and assets are now served together.");
+      await fetchPagePresets();
+      setIsUploadingPresetZip(false);
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to upload preset ZIP." }));
+    setPresetMessage(payload.error ?? "Unable to upload preset ZIP.");
+    setIsUploadingPresetZip(false);
+  }
+
   async function handleAssignTenantDomain(userId: string, assignedDomainId: string) {
     setAssigningDomainUserId(userId);
     setMessage("");
@@ -541,6 +580,17 @@ export default function SuperAdminUsersPage() {
     }));
     setCheckingDnsDomainId("");
   }
+
+  const selectedPresetFile =
+    editingFilePath === "index.html"
+      ? {
+          filePath: "index.html",
+          content: editingPreset?.htmlContent ?? "",
+          contentEncoding: "utf8",
+          contentType: "text/html; charset=utf-8",
+        }
+      : editingPreset?.files.find((file) => file.filePath === editingFilePath);
+  const isSelectedPresetTextFile = !selectedPresetFile || (selectedPresetFile.contentEncoding ?? "utf8") === "utf8";
 
   if (isCheckingAuth) {
     return (
@@ -876,6 +926,28 @@ export default function SuperAdminUsersPage() {
                 ))}
               </select>
             </label>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-emerald-950">Upload preset folder ZIP</p>
+                  <p className="mt-1 text-xs leading-5 text-emerald-800">
+                    ZIP must contain root-level index.html and dashboard.html. CSS, JS, images, fonts, media, PDFs, and nested asset folders are preserved and served from the generated tenant URL.
+                  </p>
+                </div>
+                <label className="block min-w-0 flex-1 text-sm font-medium text-emerald-950">
+                  Preset ZIP
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    onChange={(event) => setPresetZipFile(event.target.files?.[0] ?? null)}
+                    className="mt-1 block w-full rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded file:border-0 file:bg-emerald-700 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-white"
+                  />
+                </label>
+                <Button type="button" onClick={() => void handleUploadPresetZip()} disabled={!editingPreset || !presetZipFile || isUploadingPresetZip}>
+                  {isUploadingPresetZip ? "Uploading..." : "Upload ZIP"}
+                </Button>
+              </div>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block text-sm font-medium text-slate-700">
                 Folder
@@ -925,46 +997,62 @@ export default function SuperAdminUsersPage() {
                 />
               </label>
             </div>
-            <label className="block text-sm font-medium text-slate-700">
-              {editingFilePath} Content
-              <textarea
-                value={
-                  editingFilePath === "index.html"
-                    ? (editingPreset?.htmlContent ?? "")
-                    : (editingPreset?.files.find((file) => file.filePath === editingFilePath)?.content ?? "")
-                }
-                onChange={(event) => {
-                  const nextContent = event.target.value;
+            {isSelectedPresetTextFile ? (
+              <label className="block text-sm font-medium text-slate-700">
+                {editingFilePath} Content
+                <textarea
+                  value={selectedPresetFile?.content ?? ""}
+                  onChange={(event) => {
+                    const nextContent = event.target.value;
 
-                  setEditingPreset((preset) => {
-                    if (!preset) {
-                      return preset;
-                    }
+                    setEditingPreset((preset) => {
+                      if (!preset) {
+                        return preset;
+                      }
 
-                    if (editingFilePath === "index.html") {
-                      return { ...preset, htmlContent: nextContent };
-                    }
+                      if (editingFilePath === "index.html") {
+                        return { ...preset, htmlContent: nextContent };
+                      }
 
-                    return {
-                      ...preset,
-                      files: preset.files.map((file) =>
-                        file.filePath === editingFilePath ? { ...file, content: nextContent } : file,
-                      ),
-                    };
-                  });
-                }}
-                className="mt-1 min-h-80 w-full rounded-md border border-slate-300 p-3 font-mono text-xs outline-none focus:border-slate-900"
-                spellCheck={false}
-                required
-              />
-            </label>
+                      return {
+                        ...preset,
+                        files: preset.files.map((file) =>
+                          file.filePath === editingFilePath ? { ...file, content: nextContent } : file,
+                        ),
+                      };
+                    });
+                  }}
+                  className="mt-1 min-h-80 w-full rounded-md border border-slate-300 p-3 font-mono text-xs outline-none focus:border-slate-900"
+                  spellCheck={false}
+                  required
+                />
+              </label>
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-bold text-slate-900">{editingFilePath}</p>
+                <p className="mt-1">Binary asset stored from ZIP. It will be served as {selectedPresetFile?.contentType ?? "application/octet-stream"}.</p>
+                <p className="mt-1 text-xs text-slate-500">Upload a new ZIP package to replace this file.</p>
+              </div>
+            )}
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-bold uppercase text-slate-500">Package files</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">index.html</span>
+                {(editingPreset?.files ?? []).map((file) => (
+                  <span key={file.filePath} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                    {file.filePath}
+                    {file.contentEncoding === "base64" ? " · asset" : ""}
+                  </span>
+                ))}
+              </div>
+            </div>
             <p className="text-sm text-slate-500">
               Folder files are served beside the generated page. Use relative paths like ./styles.css from index.html.
               Available placeholders: {"{{host}}"}, {"{{slug}}"}, {"{{shortUrl}}"}, {"{{destinationUrl}}"}, {"{{adminDestinationUrl}}"}.
               Use Redirect Source on each URL to decide whether {"{{destinationUrl}}"} follows the admin URL or lets the preset control redirects.
             </p>
             <Button type="submit" disabled={!editingPreset}>
-              Save Preset HTML
+              Save Text Changes
             </Button>
             {presetMessage ? <p className="text-sm font-medium text-slate-600">{presetMessage}</p> : null}
           </form>

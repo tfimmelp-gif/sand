@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { DEFAULT_PAGE_PRESETS, ensureDefaultPagePresets, renderIndexHtml } from "@/lib/page-presets";
+import { isHtmlContentType, presetFileBody } from "@/lib/preset-package";
 import { prisma } from "@/lib/prisma";
 import { publicLinkAccessWhere } from "@/lib/tenant-access";
 
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
       },
       select: {
         content: true,
+        contentEncoding: true,
         contentType: true,
       },
     });
@@ -72,22 +74,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ found: false }, { status: 404 });
     }
 
-    return new NextResponse(
-      renderIndexHtml(file.content, {
-        destinationUrl: link.destinationUrl,
-        adminDestinationUrl: link.destinationUrl,
-        host: link.domain.hostString,
-        redirectSource: link.redirectSource,
-        shortUrl: `${link.domain.hostString}/${link.slug}`,
-        slug: link.slug,
-      }),
-      {
-        headers: {
-          "Content-Type": file.contentType,
-          "Cache-Control": "no-store",
-        },
+    const body = isHtmlContentType(file.contentType)
+      ? renderIndexHtml(file.content, {
+          destinationUrl: link.destinationUrl,
+          adminDestinationUrl: link.destinationUrl,
+          host: link.domain.hostString,
+          redirectSource: link.redirectSource,
+          shortUrl: `${link.domain.hostString}/${link.slug}`,
+          slug: link.slug,
+        })
+      : presetFileBody(file);
+
+    return new NextResponse(body, {
+      headers: {
+        "Content-Type": file.contentType,
+        "Cache-Control": isHtmlContentType(file.contentType) ? "no-store" : "public, max-age=300",
       },
-    );
+    });
   }
 
   const preset = await prisma.linkPagePreset.findUnique({

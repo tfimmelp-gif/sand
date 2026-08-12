@@ -93,6 +93,7 @@ model LinkPagePresetFile {
   filePath    String
   contentType String
   content     String
+  contentEncoding String        @default("utf8")
   updatedAt   DateTime       @updatedAt
   createdAt   DateTime       @default(now())
 
