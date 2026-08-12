@@ -40,6 +40,7 @@ export async function POST(req: Request) {
     select: {
       destinationUrl: true,
       indexPagePreset: true,
+      redirectSource: true,
       slug: true,
       domain: {
         select: {
@@ -74,7 +75,9 @@ export async function POST(req: Request) {
     return new NextResponse(
       renderIndexHtml(file.content, {
         destinationUrl: link.destinationUrl,
+        adminDestinationUrl: link.destinationUrl,
         host: link.domain.hostString,
+        redirectSource: link.redirectSource,
         shortUrl: `${link.domain.hostString}/${link.slug}`,
         slug: link.slug,
       }),
@@ -96,7 +99,9 @@ export async function POST(req: Request) {
   const fallback = DEFAULT_PAGE_PRESETS[0].htmlContent;
   const html = renderIndexHtml(preset?.htmlContent ?? fallback, {
     destinationUrl: link.destinationUrl,
+    adminDestinationUrl: link.destinationUrl,
     host: link.domain.hostString,
+    redirectSource: link.redirectSource,
     shortUrl: `${link.domain.hostString}/${link.slug}`,
     slug: link.slug,
   });

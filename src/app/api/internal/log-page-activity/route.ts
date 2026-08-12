@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { sendDiscordFormSubmission } from "@/lib/discord-webhook";
 import { prisma } from "@/lib/prisma";
 import { getRequestIp, parseUserAgent } from "@/lib/request-insights";
 import { publicLinkAccessWhere } from "@/lib/tenant-access";
@@ -34,7 +35,12 @@ export async function POST(req: Request) {
       slug: payload.slug,
       ...publicLinkAccessWhere(payload.host),
     },
-    select: { id: true },
+    select: {
+      id: true,
+      slug: true,
+      domain: { select: { hostString: true } },
+      user: { select: { discordWebhookUrl: true } },
+    },
   });
 
   if (!link) {
@@ -50,7 +56,7 @@ export async function POST(req: Request) {
     userAgent: payload.userAgent,
   });
 
-  await prisma.pageActivity.create({
+  const activity = await prisma.pageActivity.create({
     data: {
       linkId: link.id,
       eventType: payload.eventType,
@@ -64,6 +70,26 @@ export async function POST(req: Request) {
       ...userAgent,
     },
   });
+
+  if (activity.eventType === "form_submit") {
+    await sendDiscordFormSubmission({
+      webhookUrl: link.user.discordWebhookUrl,
+      host: link.domain.hostString,
+      slug: link.slug,
+      path: activity.path,
+      ipAddress: activity.ipAddress,
+      country: activity.country,
+      city: activity.city,
+      browser: activity.browser,
+      os: activity.os,
+      device: activity.device,
+      referrer: activity.referrer,
+      isBot: activity.isBot,
+      botReason: activity.botReason,
+      riskScore: activity.riskScore,
+      metadata: activity.metadata,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

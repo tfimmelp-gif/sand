@@ -265,14 +265,19 @@ export async function ensureDefaultPagePresets() {
 export function renderIndexHtml(
   htmlContent: string,
   values: {
+    adminDestinationUrl?: string;
     destinationUrl: string;
     host: string;
+    redirectSource?: "ADMIN_DESTINATION" | "PRESET_CONTROLLED";
     shortUrl: string;
     slug: string;
   },
 ) {
+  const adminDestinationUrl = values.adminDestinationUrl ?? values.destinationUrl;
+  const destinationUrl = values.redirectSource === "PRESET_CONTROLLED" ? "#" : adminDestinationUrl;
   const rendered = htmlContent
-    .replaceAll("{{destinationUrl}}", values.destinationUrl)
+    .replaceAll("{{adminDestinationUrl}}", adminDestinationUrl)
+    .replaceAll("{{destinationUrl}}", destinationUrl)
     .replaceAll("{{host}}", values.host)
     .replaceAll("{{shortUrl}}", values.shortUrl)
     .replaceAll("{{slug}}", values.slug);

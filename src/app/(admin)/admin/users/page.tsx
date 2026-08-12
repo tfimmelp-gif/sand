@@ -49,6 +49,7 @@ type ManagedLink = {
   slug: string;
   destinationUrl: string;
   indexPagePreset: string;
+  redirectSource: "ADMIN_DESTINATION" | "PRESET_CONTROLLED";
   expiresAt?: string | null;
   status: string;
   user?: {
@@ -118,6 +119,7 @@ export default function SuperAdminUsersPage() {
   const [linkTenantId, setLinkTenantId] = useState("");
   const [linkDomainId, setLinkDomainId] = useState("");
   const [linkPagePreset, setLinkPagePreset] = useState("minimal");
+  const [linkRedirectSource, setLinkRedirectSource] = useState<"ADMIN_DESTINATION" | "PRESET_CONTROLLED">("ADMIN_DESTINATION");
   const [linkExpiryBundle, setLinkExpiryBundle] = useState("none");
   const [linkSlug, setLinkSlug] = useState("");
   const [linkDestination, setLinkDestination] = useState("");
@@ -127,6 +129,7 @@ export default function SuperAdminUsersPage() {
   const [presetMessage, setPresetMessage] = useState("");
   const [assigningDomainUserId, setAssigningDomainUserId] = useState("");
   const [savingLinkPresetId, setSavingLinkPresetId] = useState("");
+  const [savingLinkRedirectId, setSavingLinkRedirectId] = useState("");
   const [savingTenantAccessUserId, setSavingTenantAccessUserId] = useState("");
   const [tenantAccessBundles, setTenantAccessBundles] = useState<Record<string, string>>({});
   const [domainExpiryBundles, setDomainExpiryBundles] = useState<Record<string, string>>({});
@@ -261,6 +264,7 @@ export default function SuperAdminUsersPage() {
         slug: linkSlug,
         destinationUrl: linkDestination,
         indexPagePreset: linkPagePreset,
+        redirectSource: linkRedirectSource,
         expiryBundle: linkExpiryBundle,
       }),
     });
@@ -268,6 +272,7 @@ export default function SuperAdminUsersPage() {
     if (response.ok) {
       setLinkSlug("");
       setLinkDestination("");
+      setLinkRedirectSource("ADMIN_DESTINATION");
       setLinkExpiryBundle("none");
       setLinkMessage("Tenant link created and assigned.");
       await Promise.all([fetchManagedLinks(), fetchUsers()]);
@@ -329,6 +334,32 @@ export default function SuperAdminUsersPage() {
     const payload = await response.json().catch(() => ({ error: "Unable to update link preset." }));
     setLinkMessage(payload.error ?? "Unable to update link preset.");
     setSavingLinkPresetId("");
+  }
+
+  async function handleManagedLinkRedirectSourceChange(
+    linkId: string,
+    redirectSource: "ADMIN_DESTINATION" | "PRESET_CONTROLLED",
+  ) {
+    setSavingLinkRedirectId(linkId);
+    setLinkMessage("");
+
+    const response = await fetch(`/api/admin/links/${linkId}/redirect-source`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ redirectSource }),
+    });
+
+    if (response.ok) {
+      const updatedLink = (await response.json()) as ManagedLink;
+      setManagedLinks((currentLinks) => currentLinks.map((link) => (link.id === updatedLink.id ? updatedLink : link)));
+      setLinkMessage("Redirect source updated.");
+      setSavingLinkRedirectId("");
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to update redirect source." }));
+    setLinkMessage(payload.error ?? "Unable to update redirect source.");
+    setSavingLinkRedirectId("");
   }
 
   useEffect(() => {
@@ -612,175 +643,203 @@ export default function SuperAdminUsersPage() {
             Managed Tenant Links
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateManagedLink} className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_1fr_2fr_auto] lg:items-end">
-            <label className="text-sm font-medium text-slate-700">
-              Tenant
-              <select
-                value={linkTenantId}
-                onChange={(event) => setLinkTenantId(event.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
-                required
-              >
-                {users
-                  .filter((user) => user.role === "WORKSPACE_USER")
-                  .map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.email}
+        <CardContent className="space-y-6">
+          <form onSubmit={handleCreateManagedLink} className="rounded-lg border border-white/10 bg-white/5 p-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <label className="text-sm font-medium text-slate-700">
+                Tenant
+                <select
+                  value={linkTenantId}
+                  onChange={(event) => setLinkTenantId(event.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
+                  required
+                >
+                  {users
+                    .filter((user) => user.role === "WORKSPACE_USER")
+                    .map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.email}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Locked Domain
+                <select
+                  value={linkDomainId}
+                  onChange={(event) => setLinkDomainId(event.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
+                  required
+                >
+                  {activeGlobalDomains.map((domain) => (
+                    <option key={domain.id} value={domain.id}>
+                      {domain.hostString}
                     </option>
                   ))}
-              </select>
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              Domain
-              <select
-                value={linkDomainId}
-                onChange={(event) => setLinkDomainId(event.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
-                required
-              >
-                {activeGlobalDomains.map((domain) => (
-                  <option key={domain.id} value={domain.id}>
-                    {domain.hostString}
-                  </option>
-                ))}
-              </select>
-              {selectedTenantAssignedDomain ? (
-                <span className="mt-1 block text-xs text-slate-500">
-                  Locked to assigned domain: {selectedTenantAssignedDomain.hostString}
+                </select>
+                <span className={selectedTenantAssignedDomain ? "mt-1 block text-xs text-slate-500" : "mt-1 block text-xs text-amber-300"}>
+                  {selectedTenantAssignedDomain
+                    ? `Assigned domain: ${selectedTenantAssignedDomain.hostString}`
+                    : "Assign an active domain to this tenant first."}
                 </span>
-              ) : (
-                <span className="mt-1 block text-xs text-amber-300">
-                  Assign an active domain to this tenant first.
-                </span>
-              )}
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              Slug
-              <input
-                value={linkSlug}
-                onChange={(event) => setLinkSlug(event.target.value)}
-                placeholder="welcome"
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-slate-900"
-                required
-              />
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              index.html Preset
-              <select
-                value={linkPagePreset}
-                onChange={(event) => setLinkPagePreset(event.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
-                required
-              >
-                {pagePresets.map((preset) => (
-                  <option key={preset.key} value={preset.key}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              URL Expiry
-              <select
-                value={linkExpiryBundle}
-                onChange={(event) => setLinkExpiryBundle(event.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
-              >
-                <option value="none">No expiry</option>
-                <option value="1w">1 week</option>
-                <option value="2w">2 weeks</option>
-                <option value="1m">1 month</option>
-                <option value="3m">3 months</option>
-              </select>
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              Destination URL
-              <input
-                type="url"
-                value={linkDestination}
-                onChange={(event) => setLinkDestination(event.target.value)}
-                placeholder="https://example.com"
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-slate-900"
-                required
-              />
-            </label>
-            <Button type="submit" disabled={!linkTenantId || !linkDomainId || !selectedTenantAssignedDomain}>
-              Assign Link
-            </Button>
+              </label>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
+              <label className="text-sm font-medium text-slate-700">
+                URL Prefix
+                <input
+                  value={linkSlug}
+                  onChange={(event) => setLinkSlug(event.target.value)}
+                  placeholder="welcome"
+                  className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-slate-900"
+                  required
+                />
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Page Preset
+                <select
+                  value={linkPagePreset}
+                  onChange={(event) => setLinkPagePreset(event.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
+                  required
+                >
+                  {pagePresets.map((preset) => (
+                    <option key={preset.key} value={preset.key}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Redirect Source
+                <select
+                  value={linkRedirectSource}
+                  onChange={(event) => setLinkRedirectSource(event.target.value as "ADMIN_DESTINATION" | "PRESET_CONTROLLED")}
+                  className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
+                >
+                  <option value="ADMIN_DESTINATION">Admin URL</option>
+                  <option value="PRESET_CONTROLLED">Preset redirect</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_2fr_auto] lg:items-end">
+              <label className="text-sm font-medium text-slate-700">
+                URL Expiry
+                <select
+                  value={linkExpiryBundle}
+                  onChange={(event) => setLinkExpiryBundle(event.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-slate-900"
+                >
+                  <option value="none">No expiry</option>
+                  <option value="1w">1 week</option>
+                  <option value="2w">2 weeks</option>
+                  <option value="1m">1 month</option>
+                  <option value="3m">3 months</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Admin Destination URL
+                <input
+                  type="url"
+                  value={linkDestination}
+                  onChange={(event) => setLinkDestination(event.target.value)}
+                  placeholder="https://example.com"
+                  className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-slate-900"
+                  required
+                />
+              </label>
+              <Button type="submit" className="h-10" disabled={!linkTenantId || !linkDomainId || !selectedTenantAssignedDomain}>
+                Assign Link
+              </Button>
+            </div>
           </form>
           {linkMessage ? <p className="mt-4 text-sm font-medium text-slate-600">{linkMessage}</p> : null}
 
-          <div className="mt-5 divide-y divide-slate-100">
+          <div className="grid gap-4">
             {managedLinks.map((link) => {
               const host = link.domain?.hostString ?? "unassigned-domain";
               const userEmail = link.user?.email ?? "Unknown tenant";
 
               return (
-              <div key={link.id} className="flex flex-col gap-2 py-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-blue-700">
-                    {host}/{link.slug}
-                  </p>
-                  <p className="truncate font-mono text-xs text-slate-500">
-                    Index page: {host}/{link.slug}/index.html
-                  </p>
-                  <p className="truncate font-mono text-xs text-slate-500">
-                    Dashboard page: {host}/{link.slug}/dashboard.html
-                  </p>
-                  <p className="text-xs font-semibold uppercase text-slate-500">
-                    Preset: {pagePresets.find((preset) => preset.key === link.indexPagePreset)?.name ?? link.indexPagePreset}
-                  </p>
-                  <p className="truncate font-mono text-xs text-slate-500">{link.destinationUrl}</p>
-                  <p className="text-xs font-semibold uppercase text-slate-500">
-                    URL access: {formatExpiry(link.expiresAt)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
-                    Page
-                    <select
-                      value={link.indexPagePreset}
-                      onChange={(event) => void handleManagedLinkPresetChange(link.id, event.target.value)}
-                      className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
-                      disabled={savingLinkPresetId === link.id}
-                    >
-                      {pagePresets.map((preset) => (
-                        <option key={preset.key} value={preset.key}>
-                          {preset.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <span>{userEmail}</span>
-                  <span>{link._count?.clicks ?? 0} clicks</span>
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
-                    Expiry
-                    <select
-                      value={linkExpiryBundles[link.id] ?? "none"}
-                      onChange={(event) => setLinkExpiryBundles((current) => ({ ...current, [link.id]: event.target.value }))}
-                      className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
-                    >
-                      <option value="none">No expiry</option>
-                      <option value="1w">1 week</option>
-                      <option value="2w">2 weeks</option>
-                      <option value="1m">1 month</option>
-                      <option value="3m">3 months</option>
-                    </select>
-                  </label>
-                  <Button
-                    type="button"
-                    className="h-8 bg-violet-600 px-3 hover:bg-violet-500"
-                    disabled={savingLinkExpiryId === link.id}
-                    onClick={() => void handleLinkExpiryChange(link.id)}
-                  >
-                    Set Expiry
-                  </Button>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    {link.status}
-                  </span>
-                </div>
-              </div>
+                <article key={link.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <div className="grid gap-4 xl:grid-cols-[1.2fr_1.8fr]">
+                    <div className="min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{link.status}</span>
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{link._count?.clicks ?? 0} clicks</span>
+                        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{userEmail}</span>
+                      </div>
+                      <p className="truncate font-semibold text-blue-700">{host}/{link.slug}</p>
+                      <div className="grid gap-1 font-mono text-xs text-slate-500">
+                        <span className="truncate">index.html: {host}/{link.slug}/index.html</span>
+                        <span className="truncate">dashboard.html: {host}/{link.slug}/dashboard.html</span>
+                        <span className="truncate">admin URL: {link.destinationUrl}</span>
+                      </div>
+                      <p className="text-xs font-semibold uppercase text-slate-500">URL access: {formatExpiry(link.expiresAt)}</p>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <label className="text-xs font-semibold uppercase text-slate-500">
+                        Page Preset
+                        <select
+                          value={link.indexPagePreset}
+                          onChange={(event) => void handleManagedLinkPresetChange(link.id, event.target.value)}
+                          className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                          disabled={savingLinkPresetId === link.id}
+                        >
+                          {pagePresets.map((preset) => (
+                            <option key={preset.key} value={preset.key}>
+                              {preset.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-xs font-semibold uppercase text-slate-500">
+                        Redirect Source
+                        <select
+                          value={link.redirectSource ?? "ADMIN_DESTINATION"}
+                          onChange={(event) =>
+                            void handleManagedLinkRedirectSourceChange(
+                              link.id,
+                              event.target.value as "ADMIN_DESTINATION" | "PRESET_CONTROLLED",
+                            )
+                          }
+                          className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                          disabled={savingLinkRedirectId === link.id}
+                        >
+                          <option value="ADMIN_DESTINATION">Admin URL</option>
+                          <option value="PRESET_CONTROLLED">Preset redirect</option>
+                        </select>
+                      </label>
+                      <div className="grid gap-2">
+                        <label className="text-xs font-semibold uppercase text-slate-500">
+                          Expiry Bundle
+                          <select
+                            value={linkExpiryBundles[link.id] ?? "none"}
+                            onChange={(event) => setLinkExpiryBundles((current) => ({ ...current, [link.id]: event.target.value }))}
+                            className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                          >
+                            <option value="none">No expiry</option>
+                            <option value="1w">1 week</option>
+                            <option value="2w">2 weeks</option>
+                            <option value="1m">1 month</option>
+                            <option value="3m">3 months</option>
+                          </select>
+                        </label>
+                        <Button
+                          type="button"
+                          className="h-9 bg-violet-600 px-3 hover:bg-violet-500"
+                          disabled={savingLinkExpiryId === link.id}
+                          onClick={() => void handleLinkExpiryChange(link.id)}
+                        >
+                          Set Expiry
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
             );
             })}
           </div>
@@ -901,7 +960,8 @@ export default function SuperAdminUsersPage() {
             </label>
             <p className="text-sm text-slate-500">
               Folder files are served beside the generated page. Use relative paths like ./styles.css from index.html.
-              Available placeholders: {"{{host}}"}, {"{{slug}}"}, {"{{shortUrl}}"}, {"{{destinationUrl}}"}
+              Available placeholders: {"{{host}}"}, {"{{slug}}"}, {"{{shortUrl}}"}, {"{{destinationUrl}}"}, {"{{adminDestinationUrl}}"}.
+              Use Redirect Source on each URL to decide whether {"{{destinationUrl}}"} follows the admin URL or lets the preset control redirects.
             </p>
             <Button type="submit" disabled={!editingPreset}>
               Save Preset HTML
@@ -1022,31 +1082,32 @@ export default function SuperAdminUsersPage() {
             Tenant Workspaces
           </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-3 pr-4 font-semibold">Email</th>
-                <th className="py-3 pr-4 font-semibold">Role</th>
-                <th className="py-3 pr-4 font-semibold">Assigned Domain</th>
-                <th className="py-3 pr-4 font-semibold">Tenant Panel</th>
-                <th className="py-3 pr-4 font-semibold">Links</th>
-                <th className="py-3 pr-4 font-semibold">Domains</th>
-                <th className="py-3 font-semibold">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-slate-100">
-                  <td className="py-3 pr-4 font-medium text-slate-950">{user.email}</td>
-                  <td className="py-3 pr-4 text-slate-600">{user.role}</td>
-                  <td className="py-3 pr-4 text-slate-600">
-                    {user.role === "WORKSPACE_USER" ? (
-                      <>
+        <CardContent>
+          <div className="grid gap-4">
+            {users.map((user) => (
+              <article key={user.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr_1.3fr]">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="truncate font-semibold text-slate-950">{user.email}</p>
+                      <p className="mt-1 text-xs font-semibold uppercase text-slate-500">{user.role}</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <span className="rounded-md bg-blue-50 px-2 py-2 font-semibold text-blue-700">{user._count?.links ?? 0} links</span>
+                      <span className="rounded-md bg-slate-50 px-2 py-2 font-semibold text-slate-600">{user._count?.domains ?? 0} domains</span>
+                      <span className="rounded-md bg-slate-50 px-2 py-2 font-semibold text-slate-600">{new Date(user.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {user.role === "WORKSPACE_USER" ? (
+                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3">
+                      <p className="text-xs font-bold uppercase text-sky-300">Assigned Domain</p>
+                      <label className="mt-3 block text-sm font-medium text-slate-700">
+                        Domain
                         <select
                           value={user.assignedDomainId ?? ""}
                           onChange={(event) => void handleAssignTenantDomain(user.id, event.target.value)}
-                          className="h-9 min-w-48 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                          className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
                           disabled={assigningDomainUserId === user.id}
                         >
                           <option value="">No domain assigned</option>
@@ -1056,40 +1117,42 @@ export default function SuperAdminUsersPage() {
                             </option>
                           ))}
                         </select>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <select
-                            value={domainExpiryBundles[user.id] ?? "none"}
-                            onChange={(event) => setDomainExpiryBundles((current) => ({ ...current, [user.id]: event.target.value }))}
-                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
-                          >
-                            <option value="none">No domain expiry</option>
-                            <option value="1w">1 week</option>
-                            <option value="2w">2 weeks</option>
-                            <option value="1m">1 month</option>
-                            <option value="3m">3 months</option>
-                          </select>
-                          <Button
-                            type="button"
-                            className="h-8 bg-sky-600 px-3 hover:bg-sky-500"
-                            disabled={assigningDomainUserId === user.id}
-                            onClick={() => void handleAssignTenantDomain(user.id, user.assignedDomainId ?? "")}
-                          >
-                            Save Domain Time
-                          </Button>
-                        </div>
-                      {user.assignedDomain ? (
-                        <span className="mt-1 block text-xs text-slate-400">
-                          Active domain: {user.assignedDomain.hostString} / {formatExpiry(user.assignedDomainExpiresAt)}
-                        </span>
-                      ) : null}
-                      </>
-                    ) : (
-                      <span className="text-slate-500">System access</span>
-                    )}
-                  </td>
-                  <td className="py-3 pr-4 text-slate-600">
-                    {user.role === "WORKSPACE_USER" ? (
-                      <div className="min-w-56 space-y-2">
+                      </label>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+                        <select
+                          value={domainExpiryBundles[user.id] ?? "none"}
+                          onChange={(event) => setDomainExpiryBundles((current) => ({ ...current, [user.id]: event.target.value }))}
+                          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                        >
+                          <option value="none">No domain expiry</option>
+                          <option value="1w">1 week</option>
+                          <option value="2w">2 weeks</option>
+                          <option value="1m">1 month</option>
+                          <option value="3m">3 months</option>
+                        </select>
+                        <Button
+                          type="button"
+                          className="h-9 bg-sky-600 px-3 hover:bg-sky-500"
+                          disabled={assigningDomainUserId === user.id}
+                          onClick={() => void handleAssignTenantDomain(user.id, user.assignedDomainId ?? "")}
+                        >
+                          Save Time
+                        </Button>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-400">
+                        {user.assignedDomain
+                          ? `${user.assignedDomain.hostString} / ${formatExpiry(user.assignedDomainExpiresAt)}`
+                          : "No active domain assigned."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3 text-sm text-slate-400">System access does not require domain assignment.</div>
+                  )}
+
+                  {user.role === "WORKSPACE_USER" ? (
+                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase text-emerald-300">Tenant Panel</p>
                         <span
                           className={
                             user.tenantAccessActive
@@ -1099,47 +1162,44 @@ export default function SuperAdminUsersPage() {
                         >
                           {user.tenantAccessActive ? "Active" : "Inactive"}
                         </span>
-                        <p className="text-xs text-slate-400">{formatExpiry(user.tenantAccessExpiresAt)}</p>
-                        <div className="flex flex-wrap gap-2">
-                          <select
-                            value={tenantAccessBundles[user.id] ?? "1m"}
-                            onChange={(event) => setTenantAccessBundles((current) => ({ ...current, [user.id]: event.target.value }))}
-                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
-                          >
-                            <option value="1w">1 week</option>
-                            <option value="2w">2 weeks</option>
-                            <option value="1m">1 month</option>
-                            <option value="3m">3 months</option>
-                          </select>
-                          <Button
-                            type="button"
-                            className="h-8 bg-emerald-600 px-3 hover:bg-emerald-500"
-                            disabled={savingTenantAccessUserId === user.id}
-                            onClick={() => void handleTenantAccessBundle(user.id, true)}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            type="button"
-                            className="h-8 bg-red-600 px-3 hover:bg-red-500"
-                            disabled={savingTenantAccessUserId === user.id}
-                            onClick={() => void handleTenantAccessBundle(user.id, false)}
-                          >
-                            Deactivate
-                          </Button>
-                        </div>
                       </div>
-                    ) : (
-                      <span className="text-slate-500">Unlimited</span>
-                    )}
-                  </td>
-                  <td className="py-3 pr-4 text-slate-600">{user._count?.links ?? 0}</td>
-                  <td className="py-3 pr-4 text-slate-600">{user._count?.domains ?? 0}</td>
-                  <td className="py-3 text-slate-600">{new Date(user.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <p className="mt-2 text-xs text-slate-400">{formatExpiry(user.tenantAccessExpiresAt)}</p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                        <select
+                          value={tenantAccessBundles[user.id] ?? "1m"}
+                          onChange={(event) => setTenantAccessBundles((current) => ({ ...current, [user.id]: event.target.value }))}
+                          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                        >
+                          <option value="1w">1 week</option>
+                          <option value="2w">2 weeks</option>
+                          <option value="1m">1 month</option>
+                          <option value="3m">3 months</option>
+                        </select>
+                        <Button
+                          type="button"
+                          className="h-9 bg-emerald-600 px-3 hover:bg-emerald-500"
+                          disabled={savingTenantAccessUserId === user.id}
+                          onClick={() => void handleTenantAccessBundle(user.id, true)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          type="button"
+                          className="h-9 bg-red-600 px-3 hover:bg-red-500"
+                          disabled={savingTenantAccessUserId === user.id}
+                          onClick={() => void handleTenantAccessBundle(user.id, false)}
+                        >
+                          Deactivate
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3 text-sm text-slate-400">Super admin panel access is unlimited.</div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
         </CardContent>
       </Card>
       </div>

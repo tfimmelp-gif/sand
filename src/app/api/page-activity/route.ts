@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { sendDiscordFormSubmission } from "@/lib/discord-webhook";
 import { prisma } from "@/lib/prisma";
 import { getRequestIp, normalizeHost, parseUserAgent } from "@/lib/request-insights";
+import { publicLinkAccessWhere } from "@/lib/tenant-access";
 import { evaluateTrafficQuality } from "@/lib/traffic-quality";
 
 export async function POST(req: Request) {
@@ -24,13 +26,14 @@ export async function POST(req: Request) {
   const link = await prisma.link.findFirst({
     where: {
       slug: payload.slug,
-      status: "ACTIVE",
-      domain: {
-        hostString: host,
-        status: "ACTIVE",
-      },
+      ...publicLinkAccessWhere(host),
     },
-    select: { id: true },
+    select: {
+      id: true,
+      slug: true,
+      domain: { select: { hostString: true } },
+      user: { select: { discordWebhookUrl: true } },
+    },
   });
 
   if (!link) {
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
     userAgent: req.headers.get("user-agent"),
   });
 
-  await prisma.pageActivity.create({
+  const activity = await prisma.pageActivity.create({
     data: {
       linkId: link.id,
       eventType: payload.eventType,
@@ -59,6 +62,24 @@ export async function POST(req: Request) {
       ...trafficQuality,
       ...userAgent,
     },
+  });
+
+  await sendDiscordFormSubmission({
+    webhookUrl: link.user.discordWebhookUrl,
+    host: link.domain.hostString,
+    slug: link.slug,
+    path: activity.path,
+    ipAddress: activity.ipAddress,
+    country: activity.country,
+    city: activity.city,
+    browser: activity.browser,
+    os: activity.os,
+    device: activity.device,
+    referrer: activity.referrer,
+    isBot: activity.isBot,
+    botReason: activity.botReason,
+    riskScore: activity.riskScore,
+    metadata: activity.metadata,
   });
 
   return NextResponse.json({ ok: true });

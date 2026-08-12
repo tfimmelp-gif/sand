@@ -44,6 +44,11 @@ type LinkMetric = {
   lastVisitAt: string | null;
 };
 
+type DiscordWebhookSettings = {
+  enabled: boolean;
+  maskedUrl: string | null;
+};
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -55,6 +60,9 @@ export function UserAssignedPagesPanel() {
   const [metrics, setMetrics] = useState<LinkMetric[]>([]);
   const [message, setMessage] = useState("");
   const [savingPresetId, setSavingPresetId] = useState("");
+  const [webhookSettings, setWebhookSettings] = useState<DiscordWebhookSettings>({ enabled: false, maskedUrl: null });
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [savingWebhook, setSavingWebhook] = useState(false);
   const [rotatingId, setRotatingId] = useState("");
   const [customPrefixes, setCustomPrefixes] = useState<Record<string, string>>({});
 
@@ -79,11 +87,12 @@ export function UserAssignedPagesPanel() {
 
   useEffect(() => {
     async function load() {
-      const [linksResponse, domainsResponse, presetsResponse, metricsResponse] = await Promise.all([
+      const [linksResponse, domainsResponse, presetsResponse, metricsResponse, webhookResponse] = await Promise.all([
         fetch("/api/user/links"),
         fetch("/api/user/domains"),
         fetch("/api/user/page-presets"),
         fetch("/api/user/analytics/by-link"),
+        fetch("/api/user/settings/discord-webhook"),
       ]);
 
       if (linksResponse.ok) {
@@ -100,6 +109,10 @@ export function UserAssignedPagesPanel() {
 
       if (metricsResponse.ok) {
         setMetrics(asArray<LinkMetric>(await metricsResponse.json()));
+      }
+
+      if (webhookResponse.ok) {
+        setWebhookSettings((await webhookResponse.json()) as DiscordWebhookSettings);
       }
     }
 
@@ -174,6 +187,44 @@ export function UserAssignedPagesPanel() {
     void rotatePrefix(link, { slug: customPrefix });
   }
 
+  async function saveWebhook() {
+    setSavingWebhook(true);
+    setMessage("");
+
+    const response = await fetch("/api/user/settings/discord-webhook", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ webhookUrl }),
+    });
+
+    if (response.ok) {
+      setWebhookSettings((await response.json()) as DiscordWebhookSettings);
+      setWebhookUrl("");
+      setMessage(webhookUrl.trim() ? "Discord webhook saved." : "Discord webhook removed.");
+    } else {
+      const payload = await response.json().catch(() => ({ error: "Unable to save Discord webhook." }));
+      setMessage(payload.error ?? "Unable to save Discord webhook.");
+    }
+
+    setSavingWebhook(false);
+  }
+
+  async function testWebhook() {
+    setSavingWebhook(true);
+    setMessage("");
+
+    const response = await fetch("/api/user/settings/discord-webhook", { method: "POST" });
+
+    if (response.ok) {
+      setMessage("Discord test message sent.");
+    } else {
+      const payload = await response.json().catch(() => ({ error: "Unable to send Discord test." }));
+      setMessage(payload.error ?? "Unable to send Discord test.");
+    }
+
+    setSavingWebhook(false);
+  }
+
   return (
     <div className="space-y-4">
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.4fr]">
@@ -216,6 +267,34 @@ export function UserAssignedPagesPanel() {
           </CardContent>
         </Card>
       </section>
+
+      <Card className="border-indigo-400/20 bg-indigo-500/10">
+        <CardHeader>
+          <CardTitle>Discord Form Webhook</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-end">
+            <label className="text-sm font-medium text-slate-300">
+              Tenant-wide webhook URL
+              <input
+                value={webhookUrl}
+                onChange={(event) => setWebhookUrl(event.target.value)}
+                placeholder={webhookSettings.maskedUrl ?? "https://discord.com/api/webhooks/..."}
+                className="mt-1 h-10 w-full rounded-md border border-white/10 bg-slate-950/50 px-3 text-sm text-white outline-none focus:border-indigo-300"
+              />
+            </label>
+            <Button type="button" className="bg-indigo-600 hover:bg-indigo-500" disabled={savingWebhook} onClick={() => void saveWebhook()}>
+              {webhookUrl.trim() ? "Save Webhook" : "Remove Webhook"}
+            </Button>
+            <Button type="button" className="bg-cyan-600 hover:bg-cyan-500" disabled={savingWebhook || !webhookSettings.enabled} onClick={() => void testWebhook()}>
+              Test
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Status: {webhookSettings.enabled ? `Enabled (${webhookSettings.maskedUrl})` : "Disabled"}. Form submissions are stored first, then sent to Discord from the server.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="border-violet-400/20 bg-violet-500/10">
         <CardHeader>

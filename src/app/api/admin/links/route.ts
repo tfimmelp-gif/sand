@@ -49,16 +49,18 @@ export async function POST(req: Request) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const { userId, domainId, slug, destinationUrl, indexPagePreset, expiresAt, expiryBundle } = (await req.json()) as {
+  const { userId, domainId, slug, destinationUrl, indexPagePreset, redirectSource, expiresAt, expiryBundle } = (await req.json()) as {
     userId?: string;
     domainId?: string;
     slug?: string;
     destinationUrl?: string;
     indexPagePreset?: string;
+    redirectSource?: "ADMIN_DESTINATION" | "PRESET_CONTROLLED";
     expiresAt?: string | null;
     expiryBundle?: string | null;
   };
   const selectedPreset = indexPagePreset && isPagePresetKey(indexPagePreset) ? indexPagePreset : "minimal";
+  const selectedRedirectSource = redirectSource === "PRESET_CONTROLLED" ? "PRESET_CONTROLLED" : "ADMIN_DESTINATION";
 
   if (!userId || !domainId || !slug || !destinationUrl || !isValidSlug(slug)) {
     return NextResponse.json({ error: "Tenant, domain, slug, and destination URL are required." }, { status: 400 });
@@ -113,6 +115,7 @@ export async function POST(req: Request) {
         slug,
         destinationUrl: parsedDestination,
         indexPagePreset: selectedPreset,
+        redirectSource: selectedRedirectSource,
         expiresAt: parseExpiryInput({ expiresAt, expiryBundle }),
         domainId: domain.id,
         userId: tenant.id,

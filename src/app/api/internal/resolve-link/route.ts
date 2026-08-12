@@ -36,10 +36,11 @@ export async function POST(req: Request) {
     },
     select: {
       destinationUrl: true,
+      redirectSource: true,
     },
   });
 
-  if (!link) {
+  if (!link || link.redirectSource === "PRESET_CONTROLLED") {
     return NextResponse.json({ found: false }, { status: 404 });
   }
 

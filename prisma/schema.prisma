@@ -19,6 +19,11 @@ enum Status {
   PENDING
 }
 
+enum RedirectSource {
+  ADMIN_DESTINATION
+  PRESET_CONTROLLED
+}
+
 model User {
   id               String   @id @default(uuid())
   email            String   @unique
@@ -28,6 +33,7 @@ model User {
   assignedDomainExpiresAt DateTime?
   tenantAccessActive Boolean @default(true)
   tenantAccessExpiresAt DateTime?
+  discordWebhookUrl String?
   assignedDomain   Domain?  @relation("AssignedDomain", fields: [assignedDomainId], references: [id])
   createdAt        DateTime @default(now())
   links            Link[]
@@ -54,6 +60,7 @@ model Link {
   slug           String
   destinationUrl String
   indexPagePreset String   @default("minimal")
+  redirectSource   RedirectSource @default(ADMIN_DESTINATION)
   status         Status     @default(ACTIVE)
   expiresAt      DateTime?
   createdAt      DateTime   @default(now())
