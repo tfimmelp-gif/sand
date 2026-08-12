@@ -10,6 +10,9 @@ import { prisma } from "@/lib/prisma";
 import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 import { qualityLabel } from "@/lib/traffic-quality";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type FormMetadata = {
   fields?: Record<string, unknown>;
   formId?: string | null;

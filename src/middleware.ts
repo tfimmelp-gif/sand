@@ -204,11 +204,14 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     });
   }
 
-  if (pageFile && !isIndexHtmlAlias) {
+  if (pageFile) {
     const file = await renderIndexPage(url, host, pageFile.slug, pageFile.filePath);
 
     if (file) {
       if (file.contentType.toLowerCase().includes("text/html")) {
+        if (pageFile.filePath.toLowerCase() === "index.html") {
+          logClick(event, url, request, host, pageFile.slug);
+        }
         logPageActivity(event, url, request, host, pageFile.slug, "page_view");
       }
 
@@ -223,25 +226,12 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     return new NextResponse("File not found", { status: 404 });
   }
 
-  if (!slug) {
-    return NextResponse.redirect(`https://${appDomain || host}`);
+  if (isIndexHtmlAlias && !slug) {
+    return new NextResponse("Page not found", { status: 404 });
   }
 
-  if (isIndexHtmlAlias) {
-    const html = await renderIndexPage(url, host, slug);
-
-    if (html) {
-      logClick(event, url, request, host, slug);
-      logPageActivity(event, url, request, host, slug, "page_view");
-      return new NextResponse(html.body, {
-        headers: {
-          "Content-Type": html.contentType,
-          "Cache-Control": "no-store",
-        },
-      });
-    }
-
-    return new NextResponse("Page not found", { status: 404 });
+  if (!slug) {
+    return NextResponse.redirect(`https://${appDomain || host}`);
   }
 
   const html = await renderIndexPage(url, host, slug);

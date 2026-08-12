@@ -53,6 +53,8 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+const noStoreFetch: RequestInit = { cache: "no-store" };
+
 export function UserAssignedPagesPanel() {
   const [links, setLinks] = useState<LinkRecord[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -72,8 +74,8 @@ export function UserAssignedPagesPanel() {
 
   async function refreshLinks() {
     const [linksResponse, metricsResponse] = await Promise.all([
-      fetch("/api/user/links"),
-      fetch("/api/user/analytics/by-link"),
+      fetch("/api/user/links", noStoreFetch),
+      fetch("/api/user/analytics/by-link", noStoreFetch),
     ]);
 
     if (linksResponse.ok) {
@@ -88,11 +90,11 @@ export function UserAssignedPagesPanel() {
   useEffect(() => {
     async function load() {
       const [linksResponse, domainsResponse, presetsResponse, metricsResponse, webhookResponse] = await Promise.all([
-        fetch("/api/user/links"),
-        fetch("/api/user/domains"),
-        fetch("/api/user/page-presets"),
-        fetch("/api/user/analytics/by-link"),
-        fetch("/api/user/settings/discord-webhook"),
+        fetch("/api/user/links", noStoreFetch),
+        fetch("/api/user/domains", noStoreFetch),
+        fetch("/api/user/page-presets", noStoreFetch),
+        fetch("/api/user/analytics/by-link", noStoreFetch),
+        fetch("/api/user/settings/discord-webhook", noStoreFetch),
       ]);
 
       if (linksResponse.ok) {

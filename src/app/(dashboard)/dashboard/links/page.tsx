@@ -63,6 +63,8 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+const noStoreFetch: RequestInit = { cache: "no-store" };
+
 export default function UserWorkspaceLinksPage() {
   const [links, setLinks] = useState<LinkRecord[]>([]);
   const [slug, setSlug] = useState("");
@@ -79,7 +81,7 @@ export default function UserWorkspaceLinksPage() {
   const [customPrefixes, setCustomPrefixes] = useState<Record<string, string>>({});
 
   async function refreshLinks() {
-    const response = await fetch("/api/user/links");
+    const response = await fetch("/api/user/links", noStoreFetch);
     if (response.ok) {
       setLinks(asArray<LinkRecord>(await response.json()));
     }
@@ -88,11 +90,11 @@ export default function UserWorkspaceLinksPage() {
   useEffect(() => {
     async function load() {
       const [linksResponse, domainsResponse, analyticsResponse, summaryResponse, presetsResponse] = await Promise.all([
-        fetch("/api/user/links"),
-        fetch("/api/user/domains"),
-        fetch("/api/user/analytics/timeseries"),
-        fetch("/api/user/analytics/summary"),
-        fetch("/api/user/page-presets"),
+        fetch("/api/user/links", noStoreFetch),
+        fetch("/api/user/domains", noStoreFetch),
+        fetch("/api/user/analytics/timeseries", noStoreFetch),
+        fetch("/api/user/analytics/summary", noStoreFetch),
+        fetch("/api/user/page-presets", noStoreFetch),
       ]);
 
       if (linksResponse.ok) {

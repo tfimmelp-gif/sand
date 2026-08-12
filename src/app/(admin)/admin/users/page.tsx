@@ -105,6 +105,8 @@ function normalizePagePreset(preset: PagePreset): PagePreset {
   };
 }
 
+const noStoreFetch: RequestInit = { cache: "no-store" };
+
 export default function SuperAdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -167,28 +169,28 @@ export default function SuperAdminUsersPage() {
   }
 
   async function fetchUsers() {
-    const response = await fetch("/api/admin/users");
+    const response = await fetch("/api/admin/users", noStoreFetch);
     if (response.ok) {
       setUsers(asArray<AdminUser>(await response.json()));
     }
   }
 
   async function fetchGlobalDomains() {
-    const response = await fetch("/api/admin/domains");
+    const response = await fetch("/api/admin/domains", noStoreFetch);
     if (response.ok) {
       setGlobalDomains(asArray<GlobalDomain>(await response.json()));
     }
   }
 
   async function fetchManagedLinks() {
-    const response = await fetch("/api/admin/links");
+    const response = await fetch("/api/admin/links", noStoreFetch);
     if (response.ok) {
       setManagedLinks(asArray<ManagedLink>(await response.json()));
     }
   }
 
   async function fetchPagePresets() {
-    const response = await fetch("/api/admin/page-presets");
+    const response = await fetch("/api/admin/page-presets", noStoreFetch);
     if (response.ok) {
       const presets = asArray<PagePreset>(await response.json()).map(normalizePagePreset);
       setPagePresets(presets);
