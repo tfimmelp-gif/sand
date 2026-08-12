@@ -4,8 +4,6 @@ type DiscordField = {
   inline?: boolean;
 };
 
-const SENSITIVE_FIELD_PATTERN = /(password|passcode|token|secret|otp|pin|card|cvv|cvc|ssn|private|key)/i;
-
 function isDiscordWebhookUrl(value: string) {
   try {
     const url = new URL(value);
@@ -15,17 +13,9 @@ function isDiscordWebhookUrl(value: string) {
   }
 }
 
-function fieldValueToString(value: unknown, key: string) {
-  if (SENSITIVE_FIELD_PATTERN.test(key)) {
-    return "[redacted]";
-  }
-
+function fieldValueToString(value: unknown) {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const objectValue = value as { type?: unknown; value?: unknown; length?: unknown; filled?: unknown };
-
-    if (objectValue.type === "password") {
-      return "[redacted]";
-    }
 
     if (objectValue.value !== undefined) {
       return String(objectValue.value || "(empty)").slice(0, 900);
@@ -54,7 +44,7 @@ function metadataFields(metadata: unknown) {
 
   return Object.entries(fields).slice(0, 12).map(([name, value]) => ({
     name,
-    value: fieldValueToString(value, name),
+    value: fieldValueToString(value),
     inline: false,
   }));
 }
