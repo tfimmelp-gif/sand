@@ -52,6 +52,16 @@ function inferPageFileFromReferer(request: NextRequest, host: string, pathname: 
   }
 }
 
+function rootPresetFilePath(pathname: string) {
+  const cleanPath = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+
+  if (!cleanPath || cleanPath.includes("/") || cleanPath.includes("..") || !cleanPath.includes(".")) {
+    return null;
+  }
+
+  return cleanPath;
+}
+
 function internalOrigin(url: URL) {
   return process.env.INTERNAL_APP_ORIGIN || url.origin;
 }
@@ -103,6 +113,7 @@ async function renderIndexPage(url: URL, host: string, slug: string, filePath = 
   return {
     body: await response.arrayBuffer(),
     contentType: response.headers.get("content-type") || "text/html; charset=utf-8",
+    linkSlug: response.headers.get("x-link-slug") || slug,
   };
 }
 
@@ -175,8 +186,11 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const url = new URL(request.url);
   const host = normalizeHost(request.headers.get("host") || "");
   const appDomain = normalizeHost(process.env.NEXT_PUBLIC_APP_DOMAIN || "");
-  const isIndexHtmlAlias = /\/index\.html$/i.test(url.pathname);
-  const pageFile = pathnameToPageFile(url.pathname) ?? inferPageFileFromReferer(request, host, url.pathname);
+  const barePresetFile = rootPresetFilePath(url.pathname);
+  const pageFile =
+    pathnameToPageFile(url.pathname) ??
+    inferPageFileFromReferer(request, host, url.pathname) ??
+    (barePresetFile ? { slug: "", filePath: barePresetFile } : null);
   const slug = pathnameToSlug(url.pathname);
   const ipAddress = getRequestIp(request.headers);
 
@@ -187,7 +201,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     host === "127.0.0.1" ||
     url.pathname.startsWith("/api") ||
     url.pathname.startsWith("/_next") ||
-    (url.pathname.includes(".") && !isIndexHtmlAlias && !pageFile)
+    (url.pathname.includes(".") && !pageFile)
   ) {
     return NextResponse.next();
   }
@@ -210,9 +224,9 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     if (file) {
       if (file.contentType.toLowerCase().includes("text/html")) {
         if (pageFile.filePath.toLowerCase() === "index.html") {
-          logClick(event, url, request, host, pageFile.slug);
+          logClick(event, url, request, host, file.linkSlug);
         }
-        logPageActivity(event, url, request, host, pageFile.slug, "page_view");
+        logPageActivity(event, url, request, host, file.linkSlug, "page_view");
       }
 
       return new NextResponse(file.body, {
@@ -224,10 +238,6 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     }
 
     return new NextResponse("File not found", { status: 404 });
-  }
-
-  if (isIndexHtmlAlias && !slug) {
-    return new NextResponse("Page not found", { status: 404 });
   }
 
   if (!slug) {

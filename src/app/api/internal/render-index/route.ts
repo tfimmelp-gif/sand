@@ -27,17 +27,18 @@ export async function POST(req: Request) {
   const normalizedSlug = slug ? normalizeSlug(slug) : "";
   const normalizedFilePath = (filePath || "index.html").replace(/^\/+/, "").replace(/\\/g, "/");
 
-  if (!host || !normalizedSlug || normalizedFilePath.includes("..")) {
-    return NextResponse.json({ error: "Missing host or slug." }, { status: 400 });
+  if (!host || normalizedFilePath.includes("..")) {
+    return NextResponse.json({ error: "Missing host or invalid file path." }, { status: 400 });
   }
 
   await ensureDefaultPagePresets();
 
   const link = await prisma.link.findFirst({
     where: {
-      slug: normalizedSlug,
+      ...(normalizedSlug ? { slug: normalizedSlug } : {}),
       ...publicLinkAccessWhere(host),
     },
+    orderBy: { createdAt: "desc" },
     select: {
       destinationUrl: true,
       indexPagePreset: true,
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": file.contentType,
         "Cache-Control": isHtmlContentType(file.contentType) ? "no-store" : "public, max-age=300",
+        "X-Link-Slug": link.slug,
       },
     });
   }
@@ -113,6 +115,7 @@ export async function POST(req: Request) {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
+      "X-Link-Slug": link.slug,
     },
   });
 }
