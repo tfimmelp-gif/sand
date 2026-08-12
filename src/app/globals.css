@@ -23,7 +23,8 @@ body {
 
 input,
 select,
-button {
+button,
+textarea {
   font: inherit;
 }
 
@@ -41,13 +42,31 @@ a {
 .dark-dashboard .text-slate-950,
 .dark-dashboard .text-slate-900,
 .dark-dashboard .text-slate-800,
-.dark-dashboard .text-slate-700 {
+.dark-dashboard .text-slate-700,
+.dark-dashboard .text-blue-950,
+.dark-dashboard .text-cyan-950,
+.dark-dashboard .text-emerald-950,
+.dark-dashboard .text-green-950,
+.dark-dashboard .text-indigo-950,
+.dark-dashboard .text-purple-950,
+.dark-dashboard .text-rose-950,
+.dark-dashboard .text-orange-950,
+.dark-dashboard .text-amber-950 {
   color: #f8fafc !important;
 }
 
 .dark-dashboard .text-slate-600,
 .dark-dashboard .text-slate-500,
-.dark-dashboard .text-slate-400 {
+.dark-dashboard .text-slate-400,
+.dark-dashboard .text-blue-900,
+.dark-dashboard .text-cyan-900,
+.dark-dashboard .text-emerald-900,
+.dark-dashboard .text-green-900,
+.dark-dashboard .text-indigo-900,
+.dark-dashboard .text-purple-900,
+.dark-dashboard .text-rose-900,
+.dark-dashboard .text-orange-900,
+.dark-dashboard .text-amber-900 {
   color: #94a3b8 !important;
 }
 
@@ -67,9 +86,25 @@ a {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+.dark-dashboard input[type="file"] {
+  background: rgba(15, 23, 42, 0.72) !important;
+  color: #e2e8f0 !important;
+}
+
+.dark-dashboard input[type="file"]::file-selector-button {
+  border: 0;
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
 .dark-dashboard input::placeholder,
 .dark-dashboard textarea::placeholder {
-  color: #64748b;
+  color: #94a3b8;
+}
+
+.dark-dashboard select option {
+  background: #0f172a;
+  color: #f8fafc;
 }
 
 .dark-dashboard table thead tr {
@@ -81,8 +116,18 @@ a {
 }
 
 .dark-dashboard .bg-white,
-.dark-dashboard .bg-slate-50 {
+.dark-dashboard .bg-slate-50,
+.dark-dashboard .bg-slate-100 {
   background-color: rgba(15, 23, 42, 0.72) !important;
+}
+
+.dark-dashboard .bg-black,
+.dark-dashboard .bg-slate-950,
+.dark-dashboard .bg-slate-900,
+.dark-dashboard [class*="bg-slate-950/"],
+.dark-dashboard [class*="bg-slate-900/"],
+.dark-dashboard [class*="bg-black/"] {
+  background-color: rgba(15, 23, 42, 0.78) !important;
 }
 
 .dark-dashboard .bg-blue-50 {
@@ -90,8 +135,24 @@ a {
 }
 
 .dark-dashboard .bg-emerald-50,
-.dark-dashboard .bg-green-100 {
+.dark-dashboard .bg-green-100,
+.dark-dashboard .bg-emerald-100 {
   background-color: rgba(16, 185, 129, 0.18) !important;
+}
+
+.dark-dashboard .bg-amber-50,
+.dark-dashboard .bg-yellow-50 {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+}
+
+.dark-dashboard .bg-rose-50,
+.dark-dashboard .bg-red-50 {
+  background-color: rgba(244, 63, 94, 0.18) !important;
+}
+
+.dark-dashboard .bg-indigo-50,
+.dark-dashboard .bg-purple-50 {
+  background-color: rgba(99, 102, 241, 0.18) !important;
 }
 
 .dark-dashboard .text-blue-700,
@@ -102,6 +163,41 @@ a {
 .dark-dashboard .text-emerald-700,
 .dark-dashboard .text-green-800 {
   color: #34d399 !important;
+}
+
+.dark-dashboard .text-amber-700,
+.dark-dashboard .text-yellow-700 {
+  color: #fbbf24 !important;
+}
+
+.dark-dashboard .text-rose-700,
+.dark-dashboard .text-red-700 {
+  color: #fb7185 !important;
+}
+
+.dark-dashboard .ring-slate-200,
+.dark-dashboard .ring-white\/15 {
+  --tw-ring-color: rgba(148, 163, 184, 0.24) !important;
+}
+
+.dark-dashboard .shadow-slate-200\/70,
+.dark-dashboard .shadow-slate-300\/40 {
+  --tw-shadow-color: rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark-dashboard .bg-white.text-slate-700,
+.dark-dashboard button.bg-white {
+  background-color: rgba(248, 250, 252, 0.92) !important;
+  color: #0f172a !important;
+}
+
+.dark-dashboard a,
+.dark-dashboard button,
+.dark-dashboard label,
+.dark-dashboard p,
+.dark-dashboard span,
+.dark-dashboard div {
+  text-wrap: pretty;
 }
 
 .dark-dashboard .dashboard-icon {
@@ -127,17 +223,30 @@ a {
 .light-mode .dark-dashboard section,
 .light-mode .dark-dashboard article,
 .light-mode .dark-dashboard [class*="bg-white/5"],
-.light-mode .dark-dashboard [class*="bg-slate-950"] {
+.light-mode .dark-dashboard [class*="bg-slate-950"],
+.light-mode .dark-dashboard [class*="bg-slate-900"],
+.light-mode .dark-dashboard [class*="bg-black/"] {
   background-color: rgba(255, 255, 255, 0.88) !important;
   border-color: rgba(148, 163, 184, 0.32) !important;
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
 }
 
 .light-mode .dark-dashboard .text-white,
+.light-mode .dark-dashboard .text-slate-200,
+.light-mode .dark-dashboard .text-slate-300,
 .light-mode .dark-dashboard .text-slate-950,
 .light-mode .dark-dashboard .text-slate-900,
 .light-mode .dark-dashboard .text-slate-800,
-.light-mode .dark-dashboard .text-slate-700 {
+.light-mode .dark-dashboard .text-slate-700,
+.light-mode .dark-dashboard .text-blue-950,
+.light-mode .dark-dashboard .text-cyan-950,
+.light-mode .dark-dashboard .text-emerald-950,
+.light-mode .dark-dashboard .text-green-950,
+.light-mode .dark-dashboard .text-indigo-950,
+.light-mode .dark-dashboard .text-purple-950,
+.light-mode .dark-dashboard .text-rose-950,
+.light-mode .dark-dashboard .text-orange-950,
+.light-mode .dark-dashboard .text-amber-950 {
   color: #0f172a !important;
 }
 
@@ -154,6 +263,17 @@ a {
   border-color: #cbd5e1 !important;
   background: #ffffff !important;
   color: #0f172a !important;
+}
+
+.light-mode .dark-dashboard select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.light-mode .dark-dashboard .bg-white.text-slate-700,
+.light-mode .dark-dashboard button.bg-white {
+  background-color: #ffffff !important;
+  color: #334155 !important;
 }
 
 .light-mode .dark-dashboard .dashboard-icon {
