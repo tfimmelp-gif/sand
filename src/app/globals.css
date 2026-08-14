@@ -36,6 +36,7 @@ a {
 .dark-dashboard {
   min-height: 100vh;
   max-width: none;
+  background: #253144 !important;
   color: #e5eefb;
 }
 
@@ -68,6 +69,15 @@ a {
 .dark-dashboard .text-orange-900,
 .dark-dashboard .text-amber-900 {
   color: #94a3b8 !important;
+}
+
+.dark-dashboard .text-white {
+  color: #f8fafc !important;
+}
+
+.dark-dashboard .text-slate-300,
+.dark-dashboard .text-slate-200 {
+  color: #dbeafe !important;
 }
 
 .dark-dashboard .border-slate-100,
@@ -118,7 +128,7 @@ a {
 .dark-dashboard .bg-white,
 .dark-dashboard .bg-slate-50,
 .dark-dashboard .bg-slate-100 {
-  background-color: rgba(15, 23, 42, 0.72) !important;
+  background-color: rgba(42, 55, 76, 0.92) !important;
 }
 
 .dark-dashboard .bg-black,
@@ -127,7 +137,12 @@ a {
 .dark-dashboard [class*="bg-slate-950/"],
 .dark-dashboard [class*="bg-slate-900/"],
 .dark-dashboard [class*="bg-black/"] {
-  background-color: rgba(15, 23, 42, 0.78) !important;
+  background-color: rgba(31, 42, 60, 0.88) !important;
+}
+
+.dark-dashboard [class*="bg-white/5"],
+.dark-dashboard [class*="bg-white/10"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .dark-dashboard .bg-blue-50 {
@@ -234,6 +249,28 @@ a {
 .light-mode .dark-dashboard .text-white,
 .light-mode .dark-dashboard .text-slate-200,
 .light-mode .dark-dashboard .text-slate-300,
+.light-mode .dark-dashboard .text-cyan-200,
+.light-mode .dark-dashboard .text-cyan-300,
+.light-mode .dark-dashboard .text-sky-200,
+.light-mode .dark-dashboard .text-sky-300,
+.light-mode .dark-dashboard .text-blue-200,
+.light-mode .dark-dashboard .text-blue-300,
+.light-mode .dark-dashboard .text-violet-200,
+.light-mode .dark-dashboard .text-violet-300,
+.light-mode .dark-dashboard .text-purple-200,
+.light-mode .dark-dashboard .text-purple-300,
+.light-mode .dark-dashboard .text-fuchsia-200,
+.light-mode .dark-dashboard .text-fuchsia-300,
+.light-mode .dark-dashboard .text-emerald-200,
+.light-mode .dark-dashboard .text-emerald-300,
+.light-mode .dark-dashboard .text-green-200,
+.light-mode .dark-dashboard .text-green-300,
+.light-mode .dark-dashboard .text-amber-200,
+.light-mode .dark-dashboard .text-amber-300,
+.light-mode .dark-dashboard .text-red-200,
+.light-mode .dark-dashboard .text-red-300,
+.light-mode .dark-dashboard .text-rose-200,
+.light-mode .dark-dashboard .text-rose-300,
 .light-mode .dark-dashboard .text-slate-950,
 .light-mode .dark-dashboard .text-slate-900,
 .light-mode .dark-dashboard .text-slate-800,
@@ -255,6 +292,79 @@ a {
 .light-mode .dark-dashboard .text-slate-400,
 .light-mode .dark-dashboard .text-slate-300 {
   color: #475569 !important;
+}
+
+.light-mode .dark-dashboard .text-cyan-200,
+.light-mode .dark-dashboard .text-cyan-300,
+.light-mode .dark-dashboard .text-cyan-600,
+.light-mode .dark-dashboard .text-cyan-700 {
+  color: #0e7490 !important;
+}
+
+.light-mode .dark-dashboard .text-violet-200,
+.light-mode .dark-dashboard .text-violet-300,
+.light-mode .dark-dashboard .text-violet-600,
+.light-mode .dark-dashboard .text-violet-700,
+.light-mode .dark-dashboard .text-purple-200,
+.light-mode .dark-dashboard .text-purple-300 {
+  color: #6d28d9 !important;
+}
+
+.light-mode .dark-dashboard .text-fuchsia-200,
+.light-mode .dark-dashboard .text-fuchsia-300 {
+  color: #a21caf !important;
+}
+
+.light-mode .dark-dashboard .text-emerald-200,
+.light-mode .dark-dashboard .text-emerald-300,
+.light-mode .dark-dashboard .text-green-200,
+.light-mode .dark-dashboard .text-green-300,
+.light-mode .dark-dashboard .text-green-800,
+.light-mode .dark-dashboard .text-emerald-700 {
+  color: #047857 !important;
+}
+
+.light-mode .dark-dashboard .text-amber-200,
+.light-mode .dark-dashboard .text-amber-300,
+.light-mode .dark-dashboard .text-yellow-700 {
+  color: #b45309 !important;
+}
+
+.light-mode .dark-dashboard .text-red-200,
+.light-mode .dark-dashboard .text-red-300,
+.light-mode .dark-dashboard .text-rose-200,
+.light-mode .dark-dashboard .text-rose-300,
+.light-mode .dark-dashboard .text-red-700,
+.light-mode .dark-dashboard .text-rose-700 {
+  color: #be123c !important;
+}
+
+.light-mode .dark-dashboard .bg-cyan-500\/10,
+.light-mode .dark-dashboard .bg-sky-500\/10,
+.light-mode .dark-dashboard .bg-blue-500\/10 {
+  background-color: rgba(14, 165, 233, 0.12) !important;
+}
+
+.light-mode .dark-dashboard .bg-violet-500\/10,
+.light-mode .dark-dashboard .bg-purple-500\/10,
+.light-mode .dark-dashboard .bg-fuchsia-500\/10,
+.light-mode .dark-dashboard .bg-indigo-500\/10 {
+  background-color: rgba(124, 58, 237, 0.1) !important;
+}
+
+.light-mode .dark-dashboard .bg-emerald-500\/10,
+.light-mode .dark-dashboard .bg-green-500\/10 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+}
+
+.light-mode .dark-dashboard .bg-amber-500\/10,
+.light-mode .dark-dashboard .bg-yellow-500\/10 {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+}
+
+.light-mode .dark-dashboard .bg-red-500\/10,
+.light-mode .dark-dashboard .bg-rose-500\/10 {
+  background-color: rgba(244, 63, 94, 0.12) !important;
 }
 
 .light-mode .dark-dashboard input,

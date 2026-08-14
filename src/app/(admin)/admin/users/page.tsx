@@ -202,6 +202,14 @@ export default function SuperAdminUsersPage() {
     }
   }
 
+  async function refreshAdminData() {
+    await Promise.all([fetchUsers(), fetchGlobalDomains(), fetchManagedLinks(), fetchPagePresets()]);
+  }
+
+  async function refreshAdminLiveData() {
+    await Promise.all([fetchUsers(), fetchGlobalDomains(), fetchManagedLinks()]);
+  }
+
   async function handleProvisionUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -406,10 +414,22 @@ export default function SuperAdminUsersPage() {
       return;
     }
 
-    void fetchUsers();
-    void fetchGlobalDomains();
-    void fetchManagedLinks();
-    void fetchPagePresets();
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void refreshAdminLiveData();
+      }
+    }
+
+    void refreshAdminData();
+    const intervalId = window.setInterval(refreshWhenVisible, 10_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [isAuthorized]);
 
   useEffect(() => {

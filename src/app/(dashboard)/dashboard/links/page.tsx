@@ -80,6 +80,40 @@ export default function UserWorkspaceLinksPage() {
   const [savingPresetId, setSavingPresetId] = useState("");
   const [customPrefixes, setCustomPrefixes] = useState<Record<string, string>>({});
 
+  async function refreshWorkspaceData() {
+    const [linksResponse, domainsResponse, analyticsResponse, summaryResponse, presetsResponse] = await Promise.all([
+      fetch("/api/user/links", noStoreFetch),
+      fetch("/api/user/domains", noStoreFetch),
+      fetch("/api/user/analytics/timeseries", noStoreFetch),
+      fetch("/api/user/analytics/summary", noStoreFetch),
+      fetch("/api/user/page-presets", noStoreFetch),
+    ]);
+
+    if (linksResponse.ok) {
+      setLinks(asArray<LinkRecord>(await linksResponse.json()));
+    }
+
+    if (domainsResponse.ok) {
+      const domainData = asArray<Domain>(await domainsResponse.json());
+      setDomains(domainData);
+      setSelectedDomain((current) => current || domainData[0]?.id || "");
+    }
+
+    if (analyticsResponse.ok) {
+      setHistoricalData(asArray<TimeseriesPoint>(await analyticsResponse.json()));
+    }
+
+    if (summaryResponse.ok) {
+      setSummary(await summaryResponse.json());
+    }
+
+    if (presetsResponse.ok) {
+      const presetData = asArray<PagePreset>(await presetsResponse.json());
+      setPresets(presetData);
+      setSelectedPreset((current) => current || presetData[0]?.key || "minimal");
+    }
+  }
+
   async function refreshLinks() {
     const response = await fetch("/api/user/links", noStoreFetch);
     if (response.ok) {
@@ -88,45 +122,22 @@ export default function UserWorkspaceLinksPage() {
   }
 
   useEffect(() => {
-    async function load() {
-      const [linksResponse, domainsResponse, analyticsResponse, summaryResponse, presetsResponse] = await Promise.all([
-        fetch("/api/user/links", noStoreFetch),
-        fetch("/api/user/domains", noStoreFetch),
-        fetch("/api/user/analytics/timeseries", noStoreFetch),
-        fetch("/api/user/analytics/summary", noStoreFetch),
-        fetch("/api/user/page-presets", noStoreFetch),
-      ]);
-
-      if (linksResponse.ok) {
-        setLinks(asArray<LinkRecord>(await linksResponse.json()));
-      }
-
-      if (domainsResponse.ok) {
-        const domainData = asArray<Domain>(await domainsResponse.json());
-        setDomains(domainData);
-        if (domainData.length > 0) {
-          setSelectedDomain(domainData[0].id);
-        }
-      }
-
-      if (analyticsResponse.ok) {
-        setHistoricalData(asArray<TimeseriesPoint>(await analyticsResponse.json()));
-      }
-
-      if (summaryResponse.ok) {
-        setSummary(await summaryResponse.json());
-      }
-
-      if (presetsResponse.ok) {
-        const presetData = asArray<PagePreset>(await presetsResponse.json());
-        setPresets(presetData);
-        if (presetData.length > 0) {
-          setSelectedPreset(presetData[0].key);
-        }
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void refreshWorkspaceData();
       }
     }
 
-    void load();
+    void refreshWorkspaceData();
+    const intervalId = window.setInterval(refreshWhenVisible, 10_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
 
   async function handleCreateLink(event: React.FormEvent<HTMLFormElement>) {

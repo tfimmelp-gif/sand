@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAssignedPagesPanel } from "@/components/user-assigned-pages-panel";
@@ -153,6 +154,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="dark-dashboard space-y-6 bg-[radial-gradient(circle_at_top_left,#0e7490_0%,transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_48%,#111827_100%)] p-6">
+      <AutoRefresh />
       <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 rounded-lg border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20 md:flex-row md:items-center md:justify-between">
         <div>

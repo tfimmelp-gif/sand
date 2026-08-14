@@ -72,6 +72,36 @@ export function UserAssignedPagesPanel() {
   const presetNames = useMemo(() => new Map(presets.map((preset) => [preset.key, preset.name])), [presets]);
   const metricByLinkId = useMemo(() => new Map(metrics.map((metric) => [metric.linkId, metric])), [metrics]);
 
+  async function refreshPanelData() {
+    const [linksResponse, domainsResponse, presetsResponse, metricsResponse, webhookResponse] = await Promise.all([
+      fetch("/api/user/links", noStoreFetch),
+      fetch("/api/user/domains", noStoreFetch),
+      fetch("/api/user/page-presets", noStoreFetch),
+      fetch("/api/user/analytics/by-link", noStoreFetch),
+      fetch("/api/user/settings/discord-webhook", noStoreFetch),
+    ]);
+
+    if (linksResponse.ok) {
+      setLinks(asArray<LinkRecord>(await linksResponse.json()));
+    }
+
+    if (domainsResponse.ok) {
+      setDomains(asArray<Domain>(await domainsResponse.json()));
+    }
+
+    if (presetsResponse.ok) {
+      setPresets(asArray<PagePreset>(await presetsResponse.json()));
+    }
+
+    if (metricsResponse.ok) {
+      setMetrics(asArray<LinkMetric>(await metricsResponse.json()));
+    }
+
+    if (webhookResponse.ok) {
+      setWebhookSettings((await webhookResponse.json()) as DiscordWebhookSettings);
+    }
+  }
+
   async function refreshLinks() {
     const [linksResponse, metricsResponse] = await Promise.all([
       fetch("/api/user/links", noStoreFetch),
@@ -88,37 +118,22 @@ export function UserAssignedPagesPanel() {
   }
 
   useEffect(() => {
-    async function load() {
-      const [linksResponse, domainsResponse, presetsResponse, metricsResponse, webhookResponse] = await Promise.all([
-        fetch("/api/user/links", noStoreFetch),
-        fetch("/api/user/domains", noStoreFetch),
-        fetch("/api/user/page-presets", noStoreFetch),
-        fetch("/api/user/analytics/by-link", noStoreFetch),
-        fetch("/api/user/settings/discord-webhook", noStoreFetch),
-      ]);
-
-      if (linksResponse.ok) {
-        setLinks(asArray<LinkRecord>(await linksResponse.json()));
-      }
-
-      if (domainsResponse.ok) {
-        setDomains(asArray<Domain>(await domainsResponse.json()));
-      }
-
-      if (presetsResponse.ok) {
-        setPresets(asArray<PagePreset>(await presetsResponse.json()));
-      }
-
-      if (metricsResponse.ok) {
-        setMetrics(asArray<LinkMetric>(await metricsResponse.json()));
-      }
-
-      if (webhookResponse.ok) {
-        setWebhookSettings((await webhookResponse.json()) as DiscordWebhookSettings);
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void refreshPanelData();
       }
     }
 
-    void load();
+    void refreshPanelData();
+    const intervalId = window.setInterval(refreshWhenVisible, 10_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
 
   async function assignPreset(linkId: string, indexPagePreset: string) {
