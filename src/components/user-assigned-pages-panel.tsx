@@ -332,10 +332,10 @@ export function UserAssignedPagesPanel() {
             const metric = metricByLinkId.get(link.id);
 
             return (
-              <article key={link.id} className="rounded-lg border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/10">
+              <article key={link.id} className="rounded-md border border-white/10 bg-white/5 p-3 shadow-md shadow-black/10">
                 <div className="min-w-0 space-y-1">
                   <p className="text-xs font-bold uppercase text-violet-200">Public URL</p>
-                  <p className="truncate font-mono text-base font-black text-cyan-200">
+                  <p className="truncate font-mono text-sm font-black text-cyan-200">
                     {host}/{link.slug}
                   </p>
                   <div className="mt-2 grid gap-1 font-mono text-xs text-slate-400">
@@ -378,7 +378,7 @@ export function UserAssignedPagesPanel() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-4 lg:grid-cols-[0.8fr_1.3fr]">
+                <div className="mt-3 grid gap-3 lg:grid-cols-[0.8fr_1.3fr]">
                   <div>
                     <label className="text-xs font-bold uppercase text-slate-400">Displayed page preset</label>
                     <select
@@ -403,7 +403,7 @@ export function UserAssignedPagesPanel() {
                     <div className="mt-1 grid gap-2 sm:grid-cols-[auto_auto_1fr_auto]">
                       <Button
                         type="button"
-                        className="bg-cyan-600 hover:bg-cyan-500"
+                        className="h-8 bg-cyan-600 px-3 text-xs hover:bg-cyan-500"
                         disabled={rotatingId === link.id}
                         onClick={() => void rotatePrefix(link, { mode: "short" })}
                       >
@@ -411,7 +411,7 @@ export function UserAssignedPagesPanel() {
                       </Button>
                       <Button
                         type="button"
-                        className="bg-violet-600 hover:bg-violet-500"
+                        className="h-8 bg-violet-600 px-3 text-xs hover:bg-violet-500"
                         disabled={rotatingId === link.id}
                         onClick={() => void rotatePrefix(link, { mode: "long" })}
                       >
@@ -421,12 +421,12 @@ export function UserAssignedPagesPanel() {
                         value={customPrefixes[link.id] ?? ""}
                         onChange={(event) => setCustomPrefixes((current) => ({ ...current, [link.id]: event.target.value }))}
                         placeholder="custom-prefix"
-                        className="h-10 rounded-md border px-3 text-sm"
+                        className="h-8 rounded-md border px-2 text-sm"
                         maxLength={80}
                       />
                       <Button
                         type="button"
-                        className="bg-fuchsia-500 hover:bg-fuchsia-400"
+                        className="h-8 bg-fuchsia-500 px-3 text-xs hover:bg-fuchsia-400"
                         disabled={rotatingId === link.id}
                         onClick={() => rotateCustomPrefix(link)}
                       >

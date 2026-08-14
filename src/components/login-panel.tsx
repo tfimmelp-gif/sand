@@ -41,7 +41,8 @@ export function LoginPanel({ expectedRole, eyebrow, title, subtitle, buttonLabel
       return;
     }
 
-    router.push(successPath);
+    router.replace(successPath);
+    router.refresh();
   }
 
   return (

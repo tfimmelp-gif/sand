@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,7 +112,6 @@ function normalizePagePreset(preset: PagePreset): PagePreset {
 const noStoreFetch: RequestInit = { cache: "no-store" };
 
 export default function SuperAdminUsersPage() {
-  const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [globalDomains, setGlobalDomains] = useState<GlobalDomain[]>([]);
   const [managedLinks, setManagedLinks] = useState<ManagedLink[]>([]);
@@ -144,7 +142,10 @@ export default function SuperAdminUsersPage() {
   const [tenantAccessBundles, setTenantAccessBundles] = useState<Record<string, string>>({});
   const [domainExpiryBundles, setDomainExpiryBundles] = useState<Record<string, string>>({});
   const [linkExpiryBundles, setLinkExpiryBundles] = useState<Record<string, string>>({});
+  const [linkEdits, setLinkEdits] = useState<Record<string, { destinationUrl: string; slug: string }>>({});
   const [savingLinkExpiryId, setSavingLinkExpiryId] = useState("");
+  const [savingManagedLinkId, setSavingManagedLinkId] = useState("");
+  const [deletingManagedLinkId, setDeletingManagedLinkId] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [dnsStatuses, setDnsStatuses] = useState<Record<string, DomainDnsStatus>>({});
@@ -380,39 +381,69 @@ export default function SuperAdminUsersPage() {
     setSavingLinkRedirectId("");
   }
 
-  useEffect(() => {
-    let isMounted = true;
+  async function handleManagedLinkSave(link: ManagedLink) {
+    const edit = linkEdits[link.id] ?? { slug: link.slug, destinationUrl: link.destinationUrl };
+    setSavingManagedLinkId(link.id);
+    setLinkMessage("");
 
-    async function verifyAdminSession() {
-      let session: { user?: { role?: string } } | null = null;
+    const response = await fetch(`/api/admin/links/${link.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug: edit.slug,
+        destinationUrl: edit.destinationUrl,
+      }),
+    });
 
-      try {
-        const response = await fetch("/api/auth/session", { cache: "no-store" });
-        session = response.ok ? ((await response.json()) as { user?: { role?: string } }) : null;
-      } catch {
-        session = null;
-      }
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (session?.user?.role !== "SUPER_ADMIN") {
-        setIsCheckingAuth(false);
-        router.replace("/admin/login");
-        return;
-      }
-
-      setIsAuthorized(true);
-      setIsCheckingAuth(false);
+    if (response.ok) {
+      const updatedLink = (await response.json()) as ManagedLink;
+      setManagedLinks((currentLinks) => currentLinks.map((currentLink) => (currentLink.id === updatedLink.id ? updatedLink : currentLink)));
+      setLinkEdits((current) => {
+        const next = { ...current };
+        delete next[link.id];
+        return next;
+      });
+      setLinkMessage("Tenant link updated.");
+      setSavingManagedLinkId("");
+      return;
     }
 
-    void verifyAdminSession();
+    const payload = await response.json().catch(() => ({ error: "Unable to update tenant link." }));
+    setLinkMessage(payload.error ?? "Unable to update tenant link.");
+    setSavingManagedLinkId("");
+  }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [router]);
+  async function handleManagedLinkDelete(link: ManagedLink) {
+    const confirmed = window.confirm(`Delete ${link.domain?.hostString ?? "domain"}/${link.slug}? This removes the tenant link and its old prefixes.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingManagedLinkId(link.id);
+    setLinkMessage("");
+
+    const response = await fetch(`/api/admin/links/${link.id}`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      setManagedLinks((currentLinks) => currentLinks.filter((currentLink) => currentLink.id !== link.id));
+      setLinkMessage("Tenant link deleted.");
+      setDeletingManagedLinkId("");
+      await Promise.all([fetchManagedLinks(), fetchUsers()]);
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to delete tenant link." }));
+    setLinkMessage(payload.error ?? "Unable to delete tenant link.");
+    setDeletingManagedLinkId("");
+  }
+
+  useEffect(() => {
+    setIsAuthorized(true);
+    setIsCheckingAuth(false);
+  }, []);
 
   useEffect(() => {
     if (!isAuthorized) {
@@ -838,24 +869,26 @@ export default function SuperAdminUsersPage() {
             {managedLinks.map((link) => {
               const host = link.domain?.hostString ?? "unassigned-domain";
               const userEmail = link.user?.email ?? "Unknown tenant";
+              const edit = linkEdits[link.id] ?? { slug: link.slug, destinationUrl: link.destinationUrl };
+              const hasEditChanges = edit.slug !== link.slug || edit.destinationUrl !== link.destinationUrl;
 
               return (
-                <article key={link.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <div className="grid gap-4 xl:grid-cols-[1.2fr_1.8fr]">
-                    <div className="min-w-0 space-y-2">
+                <article key={link.id} className="rounded-md border border-white/10 bg-white/5 p-3">
+                  <div className="grid gap-3 xl:grid-cols-[1fr_1.7fr]">
+                    <div className="min-w-0 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{link.status}</span>
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{link._count?.clicks ?? 0} clicks</span>
-                        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{userEmail}</span>
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">{link.status}</span>
+                        <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">{link._count?.clicks ?? 0} clicks</span>
+                        <span className="rounded-full bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">{userEmail}</span>
                       </div>
-                      <p className="truncate font-semibold text-blue-700">{host}/{link.slug}</p>
-                      <div className="grid gap-1 font-mono text-xs text-slate-500">
+                      <p className="truncate font-mono text-sm font-semibold text-blue-700">{host}/{link.slug}</p>
+                      <div className="grid gap-0.5 font-mono text-[11px] text-slate-500">
                         <span className="truncate">index.html: {host}/{link.slug}/index.html</span>
                         <span className="truncate">dashboard.html: {host}/{link.slug}/dashboard.html</span>
                         <span className="truncate">admin URL: {link.destinationUrl}</span>
                       </div>
                       {(link.slugAliases ?? []).length > 0 ? (
-                        <div className="rounded-md border border-amber-400/20 bg-amber-500/10 p-2 text-xs text-amber-200">
+                        <div className="rounded-md border border-amber-400/20 bg-amber-500/10 p-2 text-[11px] text-amber-200">
                           <p className="font-bold uppercase">Previous prefixes still active</p>
                           {(link.slugAliases ?? []).map((alias) => (
                             <p key={alias.id} className="mt-1 truncate font-mono">
@@ -864,16 +897,42 @@ export default function SuperAdminUsersPage() {
                           ))}
                         </div>
                       ) : null}
-                      <p className="text-xs font-semibold uppercase text-slate-500">URL access: {formatExpiry(link.expiresAt)}</p>
+                      <p className="text-[11px] font-semibold uppercase text-slate-500">URL access: {formatExpiry(link.expiresAt)}</p>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-2 md:grid-cols-6">
+                      <label className="text-[11px] font-semibold uppercase text-slate-500 md:col-span-2">
+                        Prefix
+                        <input
+                          value={edit.slug}
+                          onChange={(event) =>
+                            setLinkEdits((current) => ({
+                              ...current,
+                              [link.id]: { ...edit, slug: event.target.value },
+                            }))
+                          }
+                          className="mt-1 h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                        />
+                      </label>
+                      <label className="text-[11px] font-semibold uppercase text-slate-500 md:col-span-4">
+                        Destination URL
+                        <input
+                          value={edit.destinationUrl}
+                          onChange={(event) =>
+                            setLinkEdits((current) => ({
+                              ...current,
+                              [link.id]: { ...edit, destinationUrl: event.target.value },
+                            }))
+                          }
+                          className="mt-1 h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                        />
+                      </label>
                       <label className="text-xs font-semibold uppercase text-slate-500">
                         Page Preset
                         <select
                           value={link.indexPagePreset}
                           onChange={(event) => void handleManagedLinkPresetChange(link.id, event.target.value)}
-                          className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                          className="mt-1 h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
                           disabled={savingLinkPresetId === link.id}
                         >
                           {pagePresets.map((preset) => (
@@ -893,20 +952,20 @@ export default function SuperAdminUsersPage() {
                               event.target.value as "ADMIN_DESTINATION" | "PRESET_CONTROLLED",
                             )
                           }
-                          className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                          className="mt-1 h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
                           disabled={savingLinkRedirectId === link.id}
                         >
                           <option value="ADMIN_DESTINATION">Admin URL</option>
                           <option value="PRESET_CONTROLLED">Preset redirect</option>
                         </select>
                       </label>
-                      <div className="grid gap-2">
+                      <div className="grid gap-1">
                         <label className="text-xs font-semibold uppercase text-slate-500">
                           Expiry Bundle
                           <select
                             value={linkExpiryBundles[link.id] ?? "none"}
                             onChange={(event) => setLinkExpiryBundles((current) => ({ ...current, [link.id]: event.target.value }))}
-                            className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
+                            className="mt-1 h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm normal-case text-slate-900 outline-none focus:border-sky-400"
                           >
                             <option value="none">No expiry</option>
                             <option value="1w">1 week</option>
@@ -915,13 +974,31 @@ export default function SuperAdminUsersPage() {
                             <option value="3m">3 months</option>
                           </select>
                         </label>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 md:col-span-3">
                         <Button
                           type="button"
-                          className="h-9 bg-violet-600 px-3 hover:bg-violet-500"
+                          className="h-8 bg-sky-600 px-3 text-xs hover:bg-sky-500"
+                          disabled={!hasEditChanges || savingManagedLinkId === link.id}
+                          onClick={() => void handleManagedLinkSave(link)}
+                        >
+                          {savingManagedLinkId === link.id ? "Saving" : "Save"}
+                        </Button>
+                        <Button
+                          type="button"
+                          className="h-8 bg-violet-600 px-3 text-xs hover:bg-violet-500"
                           disabled={savingLinkExpiryId === link.id}
                           onClick={() => void handleLinkExpiryChange(link.id)}
                         >
                           Set Expiry
+                        </Button>
+                        <Button
+                          type="button"
+                          className="h-8 bg-rose-600 px-3 text-xs hover:bg-rose-500"
+                          disabled={deletingManagedLinkId === link.id}
+                          onClick={() => void handleManagedLinkDelete(link)}
+                        >
+                          {deletingManagedLinkId === link.id ? "Deleting" : "Delete"}
                         </Button>
                       </div>
                     </div>

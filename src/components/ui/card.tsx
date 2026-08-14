@@ -17,13 +17,13 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cx("border-b border-slate-200/80 px-5 py-4 dark-dashboard:border-white/10", className)} {...props} />;
+  return <div className={cx("border-b border-slate-200/80 px-4 py-3 dark-dashboard:border-white/10", className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cx("text-base font-semibold text-slate-950", className)} {...props} />;
+  return <h2 className={cx("text-sm font-bold text-slate-950", className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cx("px-5 py-5", className)} {...props} />;
+  return <div className={cx("px-4 py-4", className)} {...props} />;
 }
