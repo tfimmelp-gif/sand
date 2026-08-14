@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth";
 import { normalizeHost, isValidHostname } from "@/lib/domains";
+import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -36,7 +37,7 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(domains);
+  return noStoreJson(domains);
 }
 
 export async function POST(req: Request) {

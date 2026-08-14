@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { activeSlugAliasExists } from "@/lib/link-aliases";
 import { isValidSlug, validateDestinationUrl } from "@/lib/links";
+import { noStoreJson } from "@/lib/no-store";
 import { ensureDefaultPagePresets, isPagePresetKey } from "@/lib/page-presets";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
@@ -18,7 +20,7 @@ export async function GET() {
   const access = await getTenantAccess(session.user.id);
 
   if (!access.allowed) {
-    return NextResponse.json({ error: access.reason }, { status: 403 });
+    return noStoreJson({ error: access.reason }, { status: 403 });
   }
 
   const links = await prisma.link.findMany({
@@ -39,10 +41,23 @@ export async function GET() {
           clicks: true,
         },
       },
+      slugAliases: {
+        where: {
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+        orderBy: { expiresAt: "desc" },
+        select: {
+          id: true,
+          slug: true,
+          expiresAt: true,
+        },
+      },
     },
   });
 
-  return NextResponse.json(links);
+  return noStoreJson(links);
 }
 
 export async function POST(req: Request) {
@@ -55,7 +70,7 @@ export async function POST(req: Request) {
   const access = await getTenantAccess(session.user.id);
 
   if (!access.allowed) {
-    return NextResponse.json({ error: access.reason }, { status: 403 });
+    return noStoreJson({ error: access.reason }, { status: 403 });
   }
 
   const payload = (await req.json()) as {
@@ -68,7 +83,7 @@ export async function POST(req: Request) {
   const indexPagePreset = payload.indexPagePreset && isPagePresetKey(payload.indexPagePreset) ? payload.indexPagePreset : "minimal";
 
   if (!slug || !destinationUrl || !domainId || !isValidSlug(slug)) {
-    return NextResponse.json({ error: "A valid domain, slug, and destination URL are required." }, { status: 400 });
+    return noStoreJson({ error: "A valid domain, slug, and destination URL are required." }, { status: 400 });
   }
 
   let parsedDestination: string;
@@ -76,7 +91,7 @@ export async function POST(req: Request) {
   try {
     parsedDestination = validateDestinationUrl(destinationUrl);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid destination URL." }, { status: 400 });
+    return noStoreJson({ error: error instanceof Error ? error.message : "Invalid destination URL." }, { status: 400 });
   }
 
   const tenant = await prisma.user.findFirst({
@@ -90,11 +105,11 @@ export async function POST(req: Request) {
   });
 
   if (!tenant?.assignedDomainId) {
-    return NextResponse.json({ error: "No domain has been assigned to this workspace yet." }, { status: 400 });
+    return noStoreJson({ error: "No domain has been assigned to this workspace yet." }, { status: 400 });
   }
 
   if (tenant.assignedDomainId !== domainId) {
-    return NextResponse.json({ error: "Links must use your assigned workspace domain." }, { status: 403 });
+    return noStoreJson({ error: "Links must use your assigned workspace domain." }, { status: 403 });
   }
 
   const domain = await prisma.domain.findFirst({
@@ -105,7 +120,11 @@ export async function POST(req: Request) {
   });
 
   if (!domain) {
-    return NextResponse.json({ error: "Domain missing context" }, { status: 400 });
+    return noStoreJson({ error: "Domain missing context" }, { status: 400 });
+  }
+
+  if (await activeSlugAliasExists(domain.id, slug)) {
+    return noStoreJson({ error: "That slug is reserved by a recently rotated URL." }, { status: 409 });
   }
 
   await ensureDefaultPagePresets();
@@ -135,8 +154,8 @@ export async function POST(req: Request) {
       // The database write is the source of truth; cache priming can be retried on first redirect.
     }
 
-    return NextResponse.json(link, { status: 201 });
+    return noStoreJson(link, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Slug collision occurred" }, { status: 409 });
+    return noStoreJson({ error: "Slug collision occurred" }, { status: 409 });
   }
 }

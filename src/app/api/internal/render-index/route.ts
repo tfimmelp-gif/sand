@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
   await ensureDefaultPagePresets();
 
-  const link = await prisma.link.findFirst({
+  let link = await prisma.link.findFirst({
     where: {
       ...(normalizedSlug ? { slug: normalizedSlug } : {}),
       ...publicLinkAccessWhere(host),
@@ -52,9 +52,44 @@ export async function POST(req: Request) {
     },
   });
 
+  if (!link && normalizedSlug) {
+    const alias = await prisma.linkSlugAlias.findFirst({
+      where: {
+        slug: normalizedSlug,
+        expiresAt: {
+          gt: new Date(),
+        },
+        domain: {
+          hostString: host,
+          status: "ACTIVE",
+        },
+        link: publicLinkAccessWhere(host),
+      },
+      select: {
+        link: {
+          select: {
+            destinationUrl: true,
+            indexPagePreset: true,
+            redirectSource: true,
+            slug: true,
+            domain: {
+              select: {
+                hostString: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    link = alias?.link ?? null;
+  }
+
   if (!link) {
     return NextResponse.json({ found: false }, { status: 404 });
   }
+
+  const renderSlug = normalizedSlug || link.slug;
 
   if (normalizedFilePath !== "index.html") {
     const file = await prisma.linkPagePresetFile.findUnique({
@@ -81,8 +116,8 @@ export async function POST(req: Request) {
           adminDestinationUrl: link.destinationUrl,
           host: link.domain.hostString,
           redirectSource: link.redirectSource,
-          shortUrl: `${link.domain.hostString}/${link.slug}`,
-          slug: link.slug,
+          shortUrl: `${link.domain.hostString}/${renderSlug}`,
+          slug: renderSlug,
         })
       : presetFileBody(file);
 
@@ -90,7 +125,7 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": file.contentType,
         "Cache-Control": isHtmlContentType(file.contentType) ? "no-store" : "public, max-age=300",
-        "X-Link-Slug": link.slug,
+        "X-Link-Slug": renderSlug,
       },
     });
   }
@@ -107,15 +142,15 @@ export async function POST(req: Request) {
     adminDestinationUrl: link.destinationUrl,
     host: link.domain.hostString,
     redirectSource: link.redirectSource,
-    shortUrl: `${link.domain.hostString}/${link.slug}`,
-    slug: link.slug,
+    shortUrl: `${link.domain.hostString}/${renderSlug}`,
+    slug: renderSlug,
   });
 
   return new NextResponse(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
-      "X-Link-Slug": link.slug,
+      "X-Link-Slug": renderSlug,
     },
   });
 }

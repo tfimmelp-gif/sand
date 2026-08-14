@@ -64,6 +64,11 @@ type ManagedLink = {
   _count?: {
     clicks: number;
   };
+  slugAliases?: Array<{
+    id: string;
+    slug: string;
+    expiresAt: string;
+  }>;
 };
 
 type PagePreset = {
@@ -849,6 +854,16 @@ export default function SuperAdminUsersPage() {
                         <span className="truncate">dashboard.html: {host}/{link.slug}/dashboard.html</span>
                         <span className="truncate">admin URL: {link.destinationUrl}</span>
                       </div>
+                      {(link.slugAliases ?? []).length > 0 ? (
+                        <div className="rounded-md border border-amber-400/20 bg-amber-500/10 p-2 text-xs text-amber-200">
+                          <p className="font-bold uppercase">Previous prefixes still active</p>
+                          {(link.slugAliases ?? []).map((alias) => (
+                            <p key={alias.id} className="mt-1 truncate font-mono">
+                              {host}/{alias.slug} until {new Date(alias.expiresAt).toLocaleString()}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
                       <p className="text-xs font-semibold uppercase text-slate-500">URL access: {formatExpiry(link.expiresAt)}</p>
                     </div>
 

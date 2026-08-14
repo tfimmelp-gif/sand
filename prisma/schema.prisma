@@ -52,6 +52,7 @@ model Domain {
   userId     String?
   user       User?    @relation(fields: [userId], references: [id])
   links      Link[]
+  linkSlugAliases LinkSlugAlias[]
   assignedUsers User[] @relation("AssignedDomain")
 }
 
@@ -70,8 +71,24 @@ model Link {
   domain         Domain     @relation(fields: [domainId], references: [id])
   clicks         ClickLog[]
   activities     PageActivity[]
+  slugAliases    LinkSlugAlias[]
 
   @@unique([domainId, slug])
+  @@index([expiresAt])
+}
+
+model LinkSlugAlias {
+  id        String   @id @default(uuid())
+  slug      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  linkId    String
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  domainId  String
+  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([domainId, slug])
+  @@index([linkId])
   @@index([expiresAt])
 }
 

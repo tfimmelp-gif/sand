@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unsupported activity type." }, { status: 400 });
   }
 
-  const link = await prisma.link.findFirst({
+  let link = await prisma.link.findFirst({
     where: {
       slug: payload.slug,
       ...publicLinkAccessWhere(host),
@@ -35,6 +35,34 @@ export async function POST(req: Request) {
       user: { select: { discordWebhookUrl: true } },
     },
   });
+
+  if (!link) {
+    const alias = await prisma.linkSlugAlias.findFirst({
+      where: {
+        slug: payload.slug,
+        expiresAt: {
+          gt: new Date(),
+        },
+        domain: {
+          hostString: host,
+          status: "ACTIVE",
+        },
+        link: publicLinkAccessWhere(host),
+      },
+      select: {
+        link: {
+          select: {
+            id: true,
+            slug: true,
+            domain: { select: { hostString: true } },
+            user: { select: { discordWebhookUrl: true } },
+          },
+        },
+      },
+    });
+
+    link = alias?.link ?? null;
+  }
 
   if (!link) {
     return NextResponse.json({ ok: true });

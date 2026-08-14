@@ -36,6 +36,11 @@ type LinkRecord = {
   _count?: {
     clicks: number;
   };
+  slugAliases?: Array<{
+    id: string;
+    slug: string;
+    expiresAt: string;
+  }>;
 };
 
 type TimeseriesPoint = {
@@ -384,6 +389,16 @@ export default function UserWorkspaceLinksPage() {
                       Preset: {presets.find((preset) => preset.key === link.indexPagePreset)?.name ?? link.indexPagePreset}
                     </p>
                     <p className="max-w-xl truncate font-mono text-xs text-slate-500">{link.destinationUrl}</p>
+                    {(link.slugAliases ?? []).length > 0 ? (
+                      <div className="mt-2 rounded-md border border-amber-400/20 bg-amber-500/10 p-2 text-xs text-amber-200">
+                        <p className="font-bold uppercase">Previous prefixes still active</p>
+                        {(link.slugAliases ?? []).map((alias) => (
+                          <p key={alias.id} className="truncate font-mono">
+                            {link.domain?.hostString}/{alias.slug} until {new Date(alias.expiresAt).toLocaleString()}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <select

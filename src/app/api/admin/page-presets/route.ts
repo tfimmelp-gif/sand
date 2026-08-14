@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { noStoreJson } from "@/lib/no-store";
 import { ensureDefaultPagePresets, isPagePresetKey } from "@/lib/page-presets";
 import { extractPresetZip } from "@/lib/preset-package";
 import { prisma } from "@/lib/prisma";
@@ -26,7 +27,7 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(presets);
+  return noStoreJson(presets);
 }
 
 export async function PUT(req: Request) {

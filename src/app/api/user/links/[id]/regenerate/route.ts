@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { activeSlugAliasExists, LINK_ALIAS_TTL_SECONDS, linkAliasExpiresAt } from "@/lib/link-aliases";
 import { generateSlug, isValidSlug } from "@/lib/links";
+import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
@@ -21,7 +23,7 @@ export async function PATCH(req: Request, context: RouteContext) {
   const access = await getTenantAccess(session.user.id);
 
   if (!access.allowed) {
-    return NextResponse.json({ error: access.reason }, { status: 403 });
+    return noStoreJson({ error: access.reason }, { status: 403 });
   }
 
   const { id } = await context.params;
@@ -30,7 +32,7 @@ export async function PATCH(req: Request, context: RouteContext) {
   const requestedMode = payload.mode === "long" ? "long" : "short";
 
   if (requestedSlug && !isValidSlug(requestedSlug)) {
-    return NextResponse.json({ error: "Slug can only contain letters, numbers, dashes, and underscores." }, { status: 400 });
+    return noStoreJson({ error: "Slug can only contain letters, numbers, dashes, and underscores." }, { status: 400 });
   }
 
   const existingLink = await prisma.link.findFirst({
@@ -49,50 +51,30 @@ export async function PATCH(req: Request, context: RouteContext) {
   });
 
   if (!existingLink) {
-    return NextResponse.json({ error: "Link not found." }, { status: 404 });
+    return noStoreJson({ error: "Link not found." }, { status: 404 });
   }
 
   let nextSlug = requestedSlug ?? generateSlug(requestedMode === "long" ? 32 : 8);
-  let updatedLink: {
-    id: string;
-    slug: string;
-    destinationUrl: string;
-    status: string;
-    createdAt: Date;
-    userId: string;
-    domainId: string;
-    domain: {
-      hostString: string;
-      status: string;
-    };
-    _count: {
-      clicks: number;
-    };
-  } | null = null;
+  let updatedLink: Awaited<ReturnType<typeof updateLinkSlugWithAlias>> | null = null;
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
+    const aliasCollision = await activeSlugAliasExists(existingLink.domainId, nextSlug);
+
+    if (aliasCollision) {
+      if (requestedSlug) {
+        return noStoreJson({ error: "That slug is already reserved by a recently rotated URL." }, { status: 409 });
+      }
+
+      nextSlug = generateSlug(requestedMode === "long" ? 32 : 8);
+      continue;
+    }
+
     try {
-      updatedLink = await prisma.link.update({
-        where: { id: existingLink.id },
-        data: { slug: nextSlug },
-        include: {
-          domain: {
-            select: {
-              hostString: true,
-              status: true,
-            },
-          },
-          _count: {
-            select: {
-              clicks: true,
-            },
-          },
-        },
-      });
+      updatedLink = await updateLinkSlugWithAlias(existingLink.id, existingLink.domainId, existingLink.slug, nextSlug);
       break;
     } catch {
       if (requestedSlug) {
-        return NextResponse.json({ error: "That slug is already taken for this domain." }, { status: 409 });
+        return noStoreJson({ error: "That slug is already taken for this domain." }, { status: 409 });
       }
 
       nextSlug = generateSlug(requestedMode === "long" ? 32 : 8);
@@ -100,12 +82,14 @@ export async function PATCH(req: Request, context: RouteContext) {
   }
 
   if (!updatedLink) {
-    return NextResponse.json({ error: "Could not generate an available slug." }, { status: 500 });
+    return noStoreJson({ error: "Could not generate an available slug." }, { status: 500 });
   }
 
   try {
     await Promise.all([
-      redis.del(`link:${existingLink.domain.hostString}:${existingLink.slug}`),
+      redis.set(`link:${existingLink.domain.hostString}:${existingLink.slug}`, existingLink.destinationUrl, {
+        ex: LINK_ALIAS_TTL_SECONDS,
+      }),
       redis.set(`link:${existingLink.domain.hostString}:${updatedLink.slug}`, updatedLink.destinationUrl, {
         ex: 60 * 60 * 24,
       }),
@@ -114,5 +98,61 @@ export async function PATCH(req: Request, context: RouteContext) {
     // Cache refresh is best-effort.
   }
 
-  return NextResponse.json(updatedLink);
+  return noStoreJson(updatedLink);
+}
+
+function updateLinkSlugWithAlias(linkId: string, domainId: string, previousSlug: string, nextSlug: string) {
+  return prisma.$transaction(async (tx) => {
+    await tx.linkSlugAlias.upsert({
+      where: {
+        domainId_slug: {
+          domainId,
+          slug: previousSlug,
+        },
+      },
+      update: {
+        linkId,
+        expiresAt: linkAliasExpiresAt(),
+      },
+      create: {
+        linkId,
+        domainId,
+        slug: previousSlug,
+        expiresAt: linkAliasExpiresAt(),
+      },
+    });
+
+    return tx.link.update({
+      where: { id: linkId },
+      data: { slug: nextSlug },
+      include: {
+        domain: {
+          select: {
+            hostString: true,
+            status: true,
+          },
+        },
+        _count: {
+          select: {
+            clicks: true,
+          },
+        },
+        slugAliases: {
+          where: {
+            expiresAt: {
+              gt: new Date(),
+            },
+          },
+          orderBy: {
+            expiresAt: "desc",
+          },
+          select: {
+            id: true,
+            slug: true,
+            expiresAt: true,
+          },
+        },
+      },
+    });
+  });
 }

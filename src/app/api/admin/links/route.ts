@@ -3,7 +3,9 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { parseExpiryInput } from "@/lib/expiration";
+import { activeSlugAliasExists } from "@/lib/link-aliases";
 import { isValidSlug, validateDestinationUrl } from "@/lib/links";
+import { noStoreJson } from "@/lib/no-store";
 import { ensureDefaultPagePresets, isPagePresetKey } from "@/lib/page-presets";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
@@ -36,10 +38,23 @@ export async function GET() {
           clicks: true,
         },
       },
+      slugAliases: {
+        where: {
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+        orderBy: { expiresAt: "desc" },
+        select: {
+          id: true,
+          slug: true,
+          expiresAt: true,
+        },
+      },
     },
   });
 
-  return NextResponse.json(links);
+  return noStoreJson(links);
 }
 
 export async function POST(req: Request) {
@@ -63,7 +78,7 @@ export async function POST(req: Request) {
   const selectedRedirectSource = redirectSource === "PRESET_CONTROLLED" ? "PRESET_CONTROLLED" : "ADMIN_DESTINATION";
 
   if (!userId || !domainId || !slug || !destinationUrl || !isValidSlug(slug)) {
-    return NextResponse.json({ error: "Tenant, domain, slug, and destination URL are required." }, { status: 400 });
+    return noStoreJson({ error: "Tenant, domain, slug, and destination URL are required." }, { status: 400 });
   }
 
   let parsedDestination: string;
@@ -71,7 +86,7 @@ export async function POST(req: Request) {
   try {
     parsedDestination = validateDestinationUrl(destinationUrl);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid destination URL." }, { status: 400 });
+    return noStoreJson({ error: error instanceof Error ? error.message : "Invalid destination URL." }, { status: 400 });
   }
 
   const [tenant, domain] = await Promise.all([
@@ -92,19 +107,23 @@ export async function POST(req: Request) {
   ]);
 
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant user was not found." }, { status: 404 });
+    return noStoreJson({ error: "Tenant user was not found." }, { status: 404 });
   }
 
   if (!domain) {
-    return NextResponse.json({ error: "Domain is not available to this tenant." }, { status: 400 });
+    return noStoreJson({ error: "Domain is not available to this tenant." }, { status: 400 });
   }
 
   if (!tenant.assignedDomainId) {
-    return NextResponse.json({ error: "Assign an active domain to this tenant before creating links." }, { status: 400 });
+    return noStoreJson({ error: "Assign an active domain to this tenant before creating links." }, { status: 400 });
   }
 
   if (tenant.assignedDomainId !== domain.id) {
-    return NextResponse.json({ error: "This tenant is assigned to a different domain." }, { status: 403 });
+    return noStoreJson({ error: "This tenant is assigned to a different domain." }, { status: 403 });
+  }
+
+  if (await activeSlugAliasExists(domain.id, slug)) {
+    return noStoreJson({ error: "That slug is reserved by a recently rotated URL." }, { status: 409 });
   }
 
   await ensureDefaultPagePresets();
@@ -132,8 +151,8 @@ export async function POST(req: Request) {
       // Cache is best-effort; DB remains source of truth.
     }
 
-    return NextResponse.json(link, { status: 201 });
+    return noStoreJson(link, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Slug already exists for that domain." }, { status: 409 });
+    return noStoreJson({ error: "Slug already exists for that domain." }, { status: 409 });
   }
 }

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { maskedWebhookUrl, sendDiscordFormSubmission, validateDiscordWebhookUrl } from "@/lib/discord-webhook";
+import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
 import { getTenantAccess } from "@/lib/tenant-access";
 
@@ -24,7 +25,7 @@ export async function GET() {
     select: { discordWebhookUrl: true },
   });
 
-  return NextResponse.json({
+  return noStoreJson({
     enabled: Boolean(user?.discordWebhookUrl),
     maskedUrl: maskedWebhookUrl(user?.discordWebhookUrl),
   });
@@ -58,7 +59,7 @@ export async function PATCH(req: Request) {
     select: { discordWebhookUrl: true },
   });
 
-  return NextResponse.json({
+  return noStoreJson({
     enabled: Boolean(user.discordWebhookUrl),
     maskedUrl: maskedWebhookUrl(user.discordWebhookUrl),
   });

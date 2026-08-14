@@ -25,6 +25,11 @@ type LinkRecord = {
   _count?: {
     clicks: number;
   };
+  slugAliases?: Array<{
+    id: string;
+    slug: string;
+    expiresAt: string;
+  }>;
 };
 
 type PagePreset = {
@@ -338,6 +343,16 @@ export function UserAssignedPagesPanel() {
                     <span className="truncate">dashboard.html: {host}/{link.slug}/dashboard.html</span>
                     <span className="truncate">destination: {link.destinationUrl}</span>
                   </div>
+                  {(link.slugAliases ?? []).length > 0 ? (
+                    <div className="mt-3 rounded-md border border-amber-400/20 bg-amber-500/10 p-2 text-xs text-amber-200">
+                      <p className="font-bold uppercase">Previous prefixes still active</p>
+                      {(link.slugAliases ?? []).map((alias) => (
+                        <p key={alias.id} className="mt-1 truncate font-mono">
+                          {host}/{alias.slug} until {new Date(alias.expiresAt).toLocaleString()}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs md:grid-cols-4 xl:grid-cols-7">
                     <span className="rounded-md bg-cyan-500/10 px-2 py-1 text-cyan-200">
                       {metric?.clicks ?? 0} clicks

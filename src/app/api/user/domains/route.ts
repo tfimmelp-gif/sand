@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { normalizeHost, isValidHostname } from "@/lib/domains";
+import { noStoreJson } from "@/lib/no-store";
 import { getTenantAccess, assignedDomainAccessWhere } from "@/lib/tenant-access";
 import { prisma } from "@/lib/prisma";
 
@@ -39,10 +40,10 @@ export async function GET() {
   });
 
   if (user?.assignedDomain) {
-    return NextResponse.json([user.assignedDomain]);
+    return noStoreJson([user.assignedDomain]);
   }
 
-  return NextResponse.json([]);
+  return noStoreJson([]);
 }
 
 export async function POST(req: Request) {

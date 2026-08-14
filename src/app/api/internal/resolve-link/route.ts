@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing host or slug." }, { status: 400 });
   }
 
-  const link = await prisma.link.findFirst({
+  let link = await prisma.link.findFirst({
     where: {
       slug: normalizedSlug,
       ...publicLinkAccessWhere(host),
@@ -39,6 +39,32 @@ export async function POST(req: Request) {
       redirectSource: true,
     },
   });
+
+  if (!link) {
+    const alias = await prisma.linkSlugAlias.findFirst({
+      where: {
+        slug: normalizedSlug,
+        expiresAt: {
+          gt: new Date(),
+        },
+        domain: {
+          hostString: host,
+          status: "ACTIVE",
+        },
+        link: publicLinkAccessWhere(host),
+      },
+      select: {
+        link: {
+          select: {
+            destinationUrl: true,
+            redirectSource: true,
+          },
+        },
+      },
+    });
+
+    link = alias?.link ?? null;
+  }
 
   if (!link || link.redirectSource === "PRESET_CONTROLLED") {
     return NextResponse.json({ found: false }, { status: 404 });

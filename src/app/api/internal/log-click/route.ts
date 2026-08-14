@@ -26,13 +26,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing host or slug." }, { status: 400 });
   }
 
-  const link = await prisma.link.findFirst({
+  let link = await prisma.link.findFirst({
     where: {
       slug: payload.slug,
       ...publicLinkAccessWhere(payload.host),
     },
     select: { id: true },
   });
+
+  if (!link) {
+    const alias = await prisma.linkSlugAlias.findFirst({
+      where: {
+        slug: payload.slug,
+        expiresAt: {
+          gt: new Date(),
+        },
+        domain: {
+          hostString: payload.host,
+          status: "ACTIVE",
+        },
+        link: publicLinkAccessWhere(payload.host),
+      },
+      select: {
+        link: {
+          select: { id: true },
+        },
+      },
+    });
+
+    link = alias?.link ?? null;
+  }
 
   if (!link) {
     return NextResponse.json({ ok: true });

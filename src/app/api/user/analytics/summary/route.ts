@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
 import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
@@ -82,7 +83,7 @@ export async function GET() {
 
   const healthyDomains = links.filter((link) => link.domain.status === "ACTIVE").length;
 
-  return NextResponse.json({
+  return noStoreJson({
     totalClicks: clicks.length,
     uniqueVisitors: new Set([...clicks.map((click) => click.ipAddress), ...activities.map((activity) => activity.ipAddress)]).size,
     activeLinks: links.filter((link) => link.status === "ACTIVE").length,

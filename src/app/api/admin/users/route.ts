@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 
 import { authOptions } from "@/lib/auth";
 import { parseExpiryInput } from "@/lib/expiration";
+import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -40,7 +41,7 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(users);
+  return noStoreJson(users);
 }
 
 export async function PATCH(req: Request) {

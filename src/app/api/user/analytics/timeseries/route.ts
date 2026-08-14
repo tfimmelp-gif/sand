@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
 import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
@@ -47,5 +48,5 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json(buckets);
+  return noStoreJson(buckets);
 }

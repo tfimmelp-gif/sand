@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing activity context." }, { status: 400 });
   }
 
-  const link = await prisma.link.findFirst({
+  let link = await prisma.link.findFirst({
     where: {
       slug: payload.slug,
       ...publicLinkAccessWhere(payload.host),
@@ -42,6 +42,34 @@ export async function POST(req: Request) {
       user: { select: { discordWebhookUrl: true } },
     },
   });
+
+  if (!link) {
+    const alias = await prisma.linkSlugAlias.findFirst({
+      where: {
+        slug: payload.slug,
+        expiresAt: {
+          gt: new Date(),
+        },
+        domain: {
+          hostString: payload.host,
+          status: "ACTIVE",
+        },
+        link: publicLinkAccessWhere(payload.host),
+      },
+      select: {
+        link: {
+          select: {
+            id: true,
+            slug: true,
+            domain: { select: { hostString: true } },
+            user: { select: { discordWebhookUrl: true } },
+          },
+        },
+      },
+    });
+
+    link = alias?.link ?? null;
+  }
 
   if (!link) {
     return NextResponse.json({ ok: true });
