@@ -274,7 +274,10 @@ export function renderIndexHtml(
   },
 ) {
   const adminDestinationUrl = values.adminDestinationUrl ?? values.destinationUrl;
-  const destinationUrl = values.redirectSource === "PRESET_CONTROLLED" ? "#" : adminDestinationUrl;
+  const destinationUrl = adminDestinationUrl;
+  const activityEndpoint = process.env.NEXTAUTH_URL
+    ? `${process.env.NEXTAUTH_URL.replace(/\/+$/, "")}/api/page-activity`
+    : "/api/page-activity";
   const rendered = rewritePresetAssetUrls(
     htmlContent
     .replaceAll("{{adminDestinationUrl}}", adminDestinationUrl)
@@ -292,9 +295,11 @@ export function renderIndexHtml(
   const tracker = `<script>
 (function(){
   var slug = ${JSON.stringify(values.slug)};
+  var activityEndpoint = ${JSON.stringify(activityEndpoint)};
   function sendPayload(payload) {
+    payload.host = window.location.host;
     var body = JSON.stringify(payload);
-    return fetch("/api/page-activity", {
+    return fetch(activityEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: body,
@@ -410,5 +415,12 @@ function rewritePresetAssetUrls(html: string, slug: string) {
     })
     .replace(/url\((["']?)(\/(?!\/|api\/|_next\/)[^)"']+)\1\)/gi, (_match, quote: string, value: string) => {
       return `url(${quote}/${safeSlug}${value}${quote})`;
+    })
+    .replace(/(["'`])\/(?!\/|api\/|_next\/)([^"'`<>]+?\.[a-zA-Z0-9]{1,8}[^"'`]*)\1/g, (match, quote: string, value: string) => {
+      if (value.startsWith(`${safeSlug}/`)) {
+        return match;
+      }
+
+      return `${quote}/${safeSlug}/${value}${quote}`;
     });
 }

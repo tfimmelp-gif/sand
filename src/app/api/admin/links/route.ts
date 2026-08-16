@@ -77,16 +77,21 @@ export async function POST(req: Request) {
   const selectedPreset = indexPagePreset && isPagePresetKey(indexPagePreset) ? indexPagePreset : "minimal";
   const selectedRedirectSource = redirectSource === "PRESET_CONTROLLED" ? "PRESET_CONTROLLED" : "ADMIN_DESTINATION";
 
-  if (!userId || !domainId || !slug || !destinationUrl || !isValidSlug(slug)) {
-    return noStoreJson({ error: "Tenant, domain, slug, and destination URL are required." }, { status: 400 });
+  if (!userId || !domainId || !slug || !isValidSlug(slug)) {
+    return noStoreJson({ error: "Tenant, domain, and slug are required." }, { status: 400 });
   }
 
   let parsedDestination: string;
 
   try {
-    parsedDestination = validateDestinationUrl(destinationUrl);
+    const fallbackDestination = `https://${process.env.NEXT_PUBLIC_APP_DOMAIN || "localhost:3000"}`;
+    parsedDestination = validateDestinationUrl(destinationUrl || fallbackDestination);
   } catch (error) {
     return noStoreJson({ error: error instanceof Error ? error.message : "Invalid destination URL." }, { status: 400 });
+  }
+
+  if (selectedRedirectSource === "ADMIN_DESTINATION" && !destinationUrl) {
+    return noStoreJson({ error: "Admin Destination URL is required when Redirect Source is Admin URL." }, { status: 400 });
   }
 
   const [tenant, domain] = await Promise.all([

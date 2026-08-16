@@ -195,6 +195,18 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const ipAddress = getRequestIp(request.headers);
 
   if (
+    host === appDomain &&
+    (url.pathname === "/login" ||
+      url.pathname === "/admin/login" ||
+      url.pathname.startsWith("/dashboard") ||
+      url.pathname.startsWith("/admin"))
+  ) {
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    return response;
+  }
+
+  if (
     !host ||
     host === appDomain ||
     host === "localhost" ||

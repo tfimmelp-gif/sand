@@ -154,6 +154,7 @@ export default function SuperAdminUsersPage() {
   const [savingLinkExpiryId, setSavingLinkExpiryId] = useState("");
   const [savingManagedLinkId, setSavingManagedLinkId] = useState("");
   const [deletingManagedLinkId, setDeletingManagedLinkId] = useState("");
+  const [clearingAliasesLinkId, setClearingAliasesLinkId] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [dnsStatuses, setDnsStatuses] = useState<Record<string, DomainDnsStatus>>({});
@@ -448,6 +449,31 @@ export default function SuperAdminUsersPage() {
     setDeletingManagedLinkId("");
   }
 
+  async function handleClearLinkAliases(link: ManagedLink) {
+    if ((link.slugAliases ?? []).length === 0) {
+      setLinkMessage("This URL has no old prefixes to clear.");
+      return;
+    }
+
+    setClearingAliasesLinkId(link.id);
+    setLinkMessage("");
+
+    const response = await fetch(`/api/admin/links/${link.id}/aliases`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      setLinkMessage("Old prefixes cleared from the tenant portal.");
+      await fetchManagedLinks();
+      setClearingAliasesLinkId("");
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to clear old prefixes." }));
+    setLinkMessage(payload.error ?? "Unable to clear old prefixes.");
+    setClearingAliasesLinkId("");
+  }
+
   useEffect(() => {
     setIsAuthorized(true);
     setIsCheckingAuth(false);
@@ -692,7 +718,7 @@ export default function SuperAdminUsersPage() {
 
   if (isCheckingAuth) {
     return (
-      <main className="dark-dashboard dashboard-deep flex min-h-screen items-center justify-center p-6">
+      <main className="dark-dashboard dashboard-deep professional-dashboard flex min-h-screen items-center justify-center p-6">
         <div className="dashboard-hero p-6 text-sm font-semibold">
           Checking super admin access...
         </div>
@@ -701,12 +727,12 @@ export default function SuperAdminUsersPage() {
   }
 
   return (
-    <main className="dark-dashboard dashboard-deep space-y-6 p-4 sm:p-6">
+    <main className="dark-dashboard dashboard-deep professional-dashboard space-y-6 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-5">
       <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase text-sky-300">Super Admin</p>
-          <h1 className="mt-1 text-4xl font-black text-white">System Infrastructure Manager</h1>
+          <p className="text-sm font-semibold uppercase text-sky-700">Super Admin</p>
+          <h1 className="mt-1 text-4xl font-black text-slate-950">System Infrastructure Manager</h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-300">Provision tenants, manage branded domains, assign links, and edit hosted preset folders from one control surface.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -893,9 +919,9 @@ export default function SuperAdminUsersPage() {
                   type="url"
                   value={linkDestination}
                   onChange={(event) => setLinkDestination(event.target.value)}
-                  placeholder="https://example.com"
+                  placeholder={linkRedirectSource === "PRESET_CONTROLLED" ? "Optional for preset-controlled links" : "https://example.com"}
                   className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-slate-900"
-                  required
+                  required={linkRedirectSource === "ADMIN_DESTINATION"}
                 />
               </label>
               <Button type="submit" className="h-10" disabled={!linkTenantId || !linkDomainId || !selectedTenantAssignedDomain}>
@@ -1015,7 +1041,7 @@ export default function SuperAdminUsersPage() {
                           </select>
                         </label>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 md:col-span-3">
+                      <div className="grid grid-cols-2 gap-2 md:col-span-3 xl:grid-cols-4">
                         <Button
                           type="button"
                           className="h-8 bg-sky-600 px-3 text-xs hover:bg-sky-500"
@@ -1039,6 +1065,14 @@ export default function SuperAdminUsersPage() {
                           onClick={() => void handleManagedLinkDelete(link)}
                         >
                           {deletingManagedLinkId === link.id ? "Deleting" : "Delete"}
+                        </Button>
+                        <Button
+                          type="button"
+                          className="h-8 bg-slate-600 px-3 text-xs hover:bg-slate-500"
+                          disabled={clearingAliasesLinkId === link.id || (link.slugAliases ?? []).length === 0}
+                          onClick={() => void handleClearLinkAliases(link)}
+                        >
+                          {clearingAliasesLinkId === link.id ? "Clearing" : "Clear Old"}
                         </Button>
                       </div>
                     </div>
@@ -1203,7 +1237,7 @@ export default function SuperAdminUsersPage() {
             <p className="text-sm text-slate-500">
               Folder files are served beside the generated page. Use relative paths like ./styles.css from index.html.
               Available placeholders: {"{{host}}"}, {"{{slug}}"}, {"{{shortUrl}}"}, {"{{destinationUrl}}"}, {"{{adminDestinationUrl}}"}.
-              Use Redirect Source on each URL to decide whether {"{{destinationUrl}}"} follows the admin URL or lets the preset control redirects.
+              Use Redirect Source on each URL to decide whether the short root URL opens the preset first or redirects immediately. Preset files always receive the admin URL through {"{{destinationUrl}}"} and {"{{adminDestinationUrl}}"}.
             </p>
             <Button type="submit" disabled={!editingPreset}>
               Save Text Changes

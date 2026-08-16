@@ -6,26 +6,27 @@ import { getRequestIp, normalizeHost, parseUserAgent } from "@/lib/request-insig
 import { evaluateTrafficQuality } from "@/lib/traffic-quality";
 
 export async function POST(req: Request) {
-  const host = normalizeHost(req.headers.get("host") || "");
   const payload = (await req.json().catch(() => ({}))) as {
+    host?: string;
     slug?: string;
     eventType?: string;
     path?: string;
     metadata?: unknown;
   };
+  const host = normalizeHost(payload.host || req.headers.get("host") || "");
 
   if (!host || !payload.slug || !payload.eventType) {
-    return NextResponse.json({ error: "Missing activity context." }, { status: 400 });
+    return corsJson({ error: "Missing activity context." }, { status: 400 });
   }
 
   if (!["form_submit"].includes(payload.eventType)) {
-    return NextResponse.json({ error: "Unsupported activity type." }, { status: 400 });
+    return corsJson({ error: "Unsupported activity type." }, { status: 400 });
   }
 
   const link = await resolvePublicLinkMetadata(host, payload.slug);
 
   if (!link) {
-    return NextResponse.json({ ok: true });
+    return corsJson({ ok: true });
   }
 
   const userAgent = parseUserAgent(req.headers.get("user-agent") ?? "");
@@ -54,5 +55,29 @@ export async function POST(req: Request) {
     ...userAgent,
   });
 
-  return NextResponse.json({ ok: true });
+  return corsJson({ ok: true });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(),
+  });
+}
+
+function corsJson(body: unknown, init?: ResponseInit) {
+  const response = NextResponse.json(body, init);
+  for (const [key, value] of Object.entries(corsHeaders())) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Cache-Control": "no-store",
+  };
 }

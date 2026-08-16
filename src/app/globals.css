@@ -474,3 +474,93 @@ a {
   background: rgba(255, 255, 255, 0.9);
   color: #0f172a;
 }
+
+.professional-dashboard {
+  background: #eef2f7 !important;
+  color: #0f172a !important;
+}
+
+.professional-dashboard .dashboard-card,
+.professional-dashboard .dashboard-hero,
+.professional-dashboard .dashboard-nav,
+.professional-dashboard .dashboard-row,
+.professional-dashboard .dashboard-subpanel {
+  border-color: #d8e0eb !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+.professional-dashboard .dashboard-card-header {
+  background: #f8fafc !important;
+  border-color: #d8e0eb !important;
+}
+
+.professional-dashboard .text-white,
+.professional-dashboard .text-slate-200,
+.professional-dashboard .text-slate-300,
+.professional-dashboard .text-slate-950,
+.professional-dashboard .text-slate-900,
+.professional-dashboard .text-slate-800,
+.professional-dashboard .text-slate-700 {
+  color: #0f172a !important;
+}
+
+.professional-dashboard .text-slate-600,
+.professional-dashboard .text-slate-500,
+.professional-dashboard .text-slate-400 {
+  color: #475569 !important;
+}
+
+.professional-dashboard .text-sky-200,
+.professional-dashboard .text-sky-300,
+.professional-dashboard .text-blue-600,
+.professional-dashboard .text-blue-700 {
+  color: #0369a1 !important;
+}
+
+.professional-dashboard .text-cyan-200,
+.professional-dashboard .text-cyan-300 {
+  color: #0e7490 !important;
+}
+
+.professional-dashboard .text-violet-200,
+.professional-dashboard .text-violet-300 {
+  color: #6d28d9 !important;
+}
+
+.professional-dashboard .text-fuchsia-200,
+.professional-dashboard .text-fuchsia-300 {
+  color: #a21caf !important;
+}
+
+.professional-dashboard .text-emerald-200,
+.professional-dashboard .text-emerald-300 {
+  color: #047857 !important;
+}
+
+.professional-dashboard .text-amber-200,
+.professional-dashboard .text-amber-300 {
+  color: #b45309 !important;
+}
+
+.professional-dashboard .text-red-200,
+.professional-dashboard .text-red-300,
+.professional-dashboard .text-rose-200,
+.professional-dashboard .text-rose-300 {
+  color: #be123c !important;
+}
+
+.professional-dashboard input,
+.professional-dashboard select,
+.professional-dashboard textarea {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.professional-dashboard button[aria-pressed] {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}

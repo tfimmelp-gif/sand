@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 type LoginPanelProps = {
   expectedRole: "SUPER_ADMIN" | "WORKSPACE_USER";
@@ -14,7 +13,6 @@ type LoginPanelProps = {
 };
 
 export function LoginPanel({ expectedRole, eyebrow, title, subtitle, buttonLabel, successPath }: LoginPanelProps) {
-  const router = useRouter();
   const isAdmin = expectedRole === "SUPER_ADMIN";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,8 +39,7 @@ export function LoginPanel({ expectedRole, eyebrow, title, subtitle, buttonLabel
       return;
     }
 
-    router.replace(successPath);
-    router.refresh();
+    window.location.assign(successPath);
   }
 
   return (

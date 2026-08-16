@@ -50,10 +50,19 @@ export async function PATCH(req: Request, context: RouteContext) {
     return noStoreJson({ error: "Slug can only contain letters, numbers, dashes, and underscores." }, { status: 400 });
   }
 
+  const nextRedirectSource =
+    payload.redirectSource === "PRESET_CONTROLLED" || payload.redirectSource === "ADMIN_DESTINATION"
+      ? payload.redirectSource
+      : existingLink.redirectSource;
+  if (nextRedirectSource === "ADMIN_DESTINATION" && payload.destinationUrl !== undefined && !payload.destinationUrl.trim()) {
+    return noStoreJson({ error: "Admin Destination URL is required when Redirect Source is Admin URL." }, { status: 400 });
+  }
+
   let nextDestinationUrl = existingLink.destinationUrl;
   if (payload.destinationUrl !== undefined) {
     try {
-      nextDestinationUrl = validateDestinationUrl(payload.destinationUrl);
+      const fallbackDestination = `https://${process.env.NEXT_PUBLIC_APP_DOMAIN || "localhost:3000"}`;
+      nextDestinationUrl = validateDestinationUrl(payload.destinationUrl || fallbackDestination);
     } catch (error) {
       return noStoreJson({ error: error instanceof Error ? error.message : "Invalid destination URL." }, { status: 400 });
     }
@@ -92,10 +101,7 @@ export async function PATCH(req: Request, context: RouteContext) {
         data: {
           slug: nextSlug,
           destinationUrl: nextDestinationUrl,
-          redirectSource:
-            payload.redirectSource === "PRESET_CONTROLLED" || payload.redirectSource === "ADMIN_DESTINATION"
-              ? payload.redirectSource
-              : undefined,
+          redirectSource: nextRedirectSource,
           expiresAt:
             payload.expiresAt !== undefined || payload.expiryBundle !== undefined
               ? parseExpiryInput({ expiresAt: payload.expiresAt, expiryBundle: payload.expiryBundle })

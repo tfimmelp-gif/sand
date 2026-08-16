@@ -153,7 +153,7 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <main className="dark-dashboard dashboard-deep space-y-6 p-4 sm:p-6">
+    <main className="dark-dashboard dashboard-deep professional-dashboard space-y-6 p-4 sm:p-6">
       <AutoRefresh />
       <div className="mx-auto max-w-7xl space-y-5">
       <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
