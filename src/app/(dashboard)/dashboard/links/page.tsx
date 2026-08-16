@@ -229,17 +229,31 @@ export default function UserWorkspaceLinksPage() {
   }
 
   return (
-    <main className="dark-dashboard dashboard-deep professional-dashboard space-y-6 p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-5">
-      <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase text-violet-300">Routing</p>
-          <h1 className="mt-1 text-4xl font-black text-white">Link Builder</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-300">Create routed links, assign page presets, and watch campaign traffic move through the workspace.</p>
+    <main className="app-shell dark-shell">
+      <aside className="app-sidebar">
+        <div className="app-brand">
+          <p className="app-brand-kicker">Tenant Portal</p>
+          <h1 className="app-brand-title">Workspace</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <nav className="app-sidebar-nav">
+          <a href="/dashboard">Overview</a>
+          <a href="/dashboard/links">Link Builder</a>
+          <a href="#create-link">Create Link</a>
+          <a href="#active-links">Active Links</a>
+          <a href="#traffic-breakdown">Traffic Breakdown</a>
+        </nav>
+        <div className="app-sidebar-actions">
           <ThemeToggle />
           <SignOutButton />
+        </div>
+      </aside>
+      <div className="app-main">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="app-topbar">
+        <div>
+          <p className="text-sm font-semibold uppercase text-violet-700">Routing</p>
+          <h1>Link Builder</h1>
+          <p className="mt-1 max-w-2xl text-sm">Create routed links, assign page presets, and watch campaign traffic move through the workspace.</p>
         </div>
       </div>
 
@@ -296,7 +310,7 @@ export default function UserWorkspaceLinksPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card>
+        <Card id="create-link">
           <CardHeader>
             <CardTitle>Generate Live Link</CardTitle>
           </CardHeader>
@@ -367,7 +381,7 @@ export default function UserWorkspaceLinksPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card id="active-links" className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Active Traffic Shunts</CardTitle>
           </CardHeader>
@@ -458,7 +472,7 @@ export default function UserWorkspaceLinksPage() {
         </Card>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-3">
+      <section id="traffic-breakdown" className="grid gap-6 md:grid-cols-3">
         {[
           ["Top Countries", summary?.topCountries ?? []],
           ["Top Referrers", summary?.topReferrers ?? []],
@@ -490,6 +504,7 @@ export default function UserWorkspaceLinksPage() {
           </Card>
         ))}
       </section>
+      </div>
       </div>
     </main>
   );

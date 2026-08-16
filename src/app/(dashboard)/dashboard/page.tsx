@@ -153,18 +153,32 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <main className="dark-dashboard dashboard-deep professional-dashboard space-y-6 p-4 sm:p-6">
+    <main className="app-shell dark-shell">
       <AutoRefresh />
-      <div className="mx-auto max-w-7xl space-y-5">
-      <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase text-cyan-300">Workspace</p>
-          <h1 className="mt-1 text-4xl font-black text-white">Traffic Overview</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-300">Monitor visitors, form submissions, domains, and live routing performance.</p>
+      <aside className="app-sidebar">
+        <div className="app-brand">
+          <p className="app-brand-kicker">Tenant Portal</p>
+          <h1 className="app-brand-title">Workspace</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <nav className="app-sidebar-nav">
+          <a href="/dashboard">Overview</a>
+          <a href="/dashboard/links">Link Builder</a>
+          <a href="#submissions">Submissions</a>
+          <a href="#assigned-pages">Assigned Pages</a>
+          <a href="#activity">Activity</a>
+        </nav>
+        <div className="app-sidebar-actions">
           <ThemeToggle />
           <SignOutButton />
+        </div>
+      </aside>
+      <div className="app-main">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="app-topbar">
+        <div>
+          <p className="text-sm font-semibold uppercase text-cyan-700">Workspace</p>
+          <h1>Traffic Overview</h1>
+          <p className="mt-1 max-w-2xl text-sm">Monitor visitors, form submissions, domains, and live routing performance.</p>
         </div>
       </div>
 
@@ -211,7 +225,7 @@ export default async function DashboardPage() {
         </Card>
       </section>
 
-      <Card>
+      <Card id="submissions">
         <CardHeader>
           <CardTitle>Recent Links</CardTitle>
         </CardHeader>
@@ -292,7 +306,7 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <section className="space-y-3">
+      <section id="assigned-pages" className="space-y-3">
         <div>
           <p className="text-sm font-semibold uppercase text-fuchsia-300">Assigned Pages</p>
           <h2 className="mt-1 text-2xl font-black text-white">Preset and URL Controls</h2>
@@ -300,7 +314,7 @@ export default async function DashboardPage() {
         <UserAssignedPagesPanel />
       </section>
 
-      <Card>
+      <Card id="activity">
         <CardHeader>
           <CardTitle>Recent Visitor Activity</CardTitle>
         </CardHeader>
@@ -348,6 +362,7 @@ export default async function DashboardPage() {
           </table>
         </CardContent>
       </Card>
+      </div>
       </div>
     </main>
   );

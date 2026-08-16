@@ -564,3 +564,220 @@ a {
   background: #ffffff !important;
   color: #0f172a !important;
 }
+
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  background: #edf2f7;
+  color: #101828;
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid #d7deea;
+  background: #172033;
+  color: #f8fafc;
+  padding: 1rem;
+}
+
+.app-brand {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.35rem 0 1rem;
+}
+
+.app-brand-kicker {
+  color: #93c5fd;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-brand-title {
+  margin-top: 0.25rem;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.app-sidebar-nav {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.app-sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.75rem;
+  color: #dbeafe;
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.app-sidebar-nav a:hover {
+  background: #24324c;
+  color: #ffffff;
+}
+
+.app-sidebar-actions {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.app-main {
+  min-width: 0;
+  padding: 1.25rem;
+}
+
+.app-topbar {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #d8e0eb;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+}
+
+.app-topbar h1 {
+  margin: 0.15rem 0 0;
+  color: #101828;
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
+  font-weight: 900;
+}
+
+.app-topbar p {
+  color: #667085;
+}
+
+.dark-shell {
+  background: #202a3a;
+  color: #f8fafc;
+}
+
+.dark-shell .app-main {
+  background: #202a3a;
+}
+
+.dark-shell .app-topbar,
+.dark-shell .dashboard-card,
+.dark-shell .dashboard-row,
+.dark-shell .dashboard-subpanel {
+  border-color: #3f5068 !important;
+  background: #2d3a4f !important;
+  color: #f8fafc !important;
+  box-shadow: 0 14px 32px rgba(7, 12, 22, 0.22) !important;
+}
+
+.dark-shell .dashboard-card-header {
+  border-color: #3f5068 !important;
+  background: #34445d !important;
+}
+
+.dark-shell .app-topbar h1,
+.dark-shell .text-white,
+.dark-shell .text-slate-950,
+.dark-shell .text-slate-900,
+.dark-shell .text-slate-800,
+.dark-shell .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+.dark-shell .app-topbar p,
+.dark-shell .text-slate-600,
+.dark-shell .text-slate-500,
+.dark-shell .text-slate-400,
+.dark-shell .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+.light-mode .dark-shell {
+  background: #edf2f7;
+  color: #101828;
+}
+
+.light-mode .dark-shell .app-main {
+  background: #edf2f7;
+}
+
+.light-mode .dark-shell .app-sidebar {
+  border-right-color: #d7deea;
+  background: #ffffff;
+  color: #101828;
+}
+
+.light-mode .dark-shell .app-brand {
+  border-bottom-color: #e2e8f0;
+}
+
+.light-mode .dark-shell .app-brand-kicker {
+  color: #2563eb;
+}
+
+.light-mode .dark-shell .app-brand-title,
+.light-mode .dark-shell .app-sidebar-nav a {
+  color: #101828;
+}
+
+.light-mode .dark-shell .app-sidebar-nav a:hover {
+  background: #e8f1ff;
+  color: #1d4ed8;
+}
+
+.light-mode .dark-shell .app-topbar,
+.light-mode .dark-shell .dashboard-card,
+.light-mode .dark-shell .dashboard-row,
+.light-mode .dark-shell .dashboard-subpanel {
+  border-color: #d8e0eb !important;
+  background: #ffffff !important;
+  color: #101828 !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+.light-mode .dark-shell .dashboard-card-header {
+  border-color: #d8e0eb !important;
+  background: #f8fafc !important;
+}
+
+.light-mode .dark-shell .app-topbar h1,
+.light-mode .dark-shell .text-white,
+.light-mode .dark-shell .text-slate-950,
+.light-mode .dark-shell .text-slate-900,
+.light-mode .dark-shell .text-slate-800,
+.light-mode .dark-shell .text-slate-700 {
+  color: #101828 !important;
+}
+
+.light-mode .dark-shell .app-topbar p,
+.light-mode .dark-shell .text-slate-600,
+.light-mode .dark-shell .text-slate-500,
+.light-mode .dark-shell .text-slate-400,
+.light-mode .dark-shell .text-slate-300 {
+  color: #475467 !important;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    position: relative;
+    height: auto;
+  }
+
+  .app-main {
+    padding: 1rem;
+  }
+}

@@ -718,8 +718,8 @@ export default function SuperAdminUsersPage() {
 
   if (isCheckingAuth) {
     return (
-      <main className="dark-dashboard dashboard-deep professional-dashboard flex min-h-screen items-center justify-center p-6">
-        <div className="dashboard-hero p-6 text-sm font-semibold">
+      <main className="app-shell dark-shell flex min-h-screen items-center justify-center p-6">
+        <div className="dashboard-card p-6 text-sm font-semibold">
           Checking super admin access...
         </div>
       </main>
@@ -727,27 +727,13 @@ export default function SuperAdminUsersPage() {
   }
 
   return (
-    <main className="dark-dashboard dashboard-deep professional-dashboard space-y-6 p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-5">
-      <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase text-sky-700">Super Admin</p>
-          <h1 className="mt-1 text-4xl font-black text-slate-950">System Infrastructure Manager</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-300">Provision tenants, manage branded domains, assign links, and edit hosted preset folders from one control surface.</p>
+    <main className="app-shell dark-shell">
+      <aside className="app-sidebar">
+        <div className="app-brand">
+          <p className="app-brand-kicker">Super Admin</p>
+          <h1 className="app-brand-title">Control Center</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <ThemeToggle />
-          <SignOutButton callbackUrl="/admin/login" />
-          <div className="dashboard-icon">
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z" />
-              <path d="M9 12l2 2 4-5" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <nav className="dashboard-nav sticky top-0 z-10 flex flex-wrap gap-2 p-2 text-sm font-bold">
+        <nav className="app-sidebar-nav">
         <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#tenant-access">
           Tenant Access
         </a>
@@ -760,7 +746,25 @@ export default function SuperAdminUsersPage() {
         <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#domain-pool">
           Domains
         </a>
-      </nav>
+        <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#workspaces">
+          Workspaces
+        </a>
+        </nav>
+        <div className="app-sidebar-actions">
+          <ThemeToggle />
+          <SignOutButton callbackUrl="/admin/login" preserveSession />
+        </div>
+      </aside>
+
+      <div className="app-main">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="app-topbar">
+        <div>
+          <p className="text-sm font-semibold uppercase text-sky-700">Infrastructure</p>
+          <h1>System Infrastructure Manager</h1>
+          <p className="mt-1 max-w-2xl text-sm">Provision tenants, manage branded domains, assign links, and edit hosted preset folders from one control surface.</p>
+        </div>
+      </div>
 
       <Card id="tenant-access">
         <CardHeader className="bg-sky-500/10">
@@ -1343,7 +1347,7 @@ export default function SuperAdminUsersPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="workspaces">
         <CardHeader className="bg-amber-500/10">
           <CardTitle className="flex items-center gap-3">
             <span className="dashboard-icon h-8 w-8 text-amber-300">
@@ -1568,6 +1572,7 @@ export default function SuperAdminUsersPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
       </div>
     </main>
   );
