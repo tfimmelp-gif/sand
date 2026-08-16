@@ -269,8 +269,8 @@ export function UserAssignedPagesPanel() {
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.4fr]">
-        <Card className="border-fuchsia-400/20 bg-fuchsia-500/10">
+      <section className="grid gap-4 xl:grid-cols-2">
+        <Card>
           <CardHeader>
             <CardTitle>Assigned Domain</CardTitle>
           </CardHeader>
@@ -292,7 +292,7 @@ export function UserAssignedPagesPanel() {
           </CardContent>
         </Card>
 
-        <Card className="border-violet-400/20 bg-violet-500/10">
+        <Card>
           <CardHeader>
             <CardTitle>Automatic Prefix Rotation</CardTitle>
           </CardHeader>
@@ -320,14 +320,14 @@ export function UserAssignedPagesPanel() {
       </section>
 
       <section className="grid gap-4">
-        <Card className="border-cyan-400/20 bg-cyan-500/10">
+        <Card>
           <CardHeader>
             <CardTitle>Admin Page Presets</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 md:grid-cols-2">
               {presets.map((preset) => (
-                <div key={preset.key} className="rounded-md border border-white/10 bg-slate-950/30 p-3">
+                <div key={preset.key} className="dashboard-subpanel p-3 shadow-none">
                   <p className="font-semibold text-white">{preset.name}</p>
                   <p className="mt-1 text-xs text-slate-300">{preset.description}</p>
                 </div>
@@ -338,7 +338,7 @@ export function UserAssignedPagesPanel() {
         </Card>
       </section>
 
-      <Card className="border-indigo-400/20 bg-indigo-500/10">
+      <Card>
         <CardHeader>
           <CardTitle>Discord Form Webhook</CardTitle>
         </CardHeader>
@@ -350,7 +350,7 @@ export function UserAssignedPagesPanel() {
                 value={webhookUrl}
                 onChange={(event) => setWebhookUrl(event.target.value)}
                 placeholder={webhookSettings.maskedUrl ?? "https://discord.com/api/webhooks/..."}
-                className="mt-1 h-10 w-full rounded-md border border-white/10 bg-slate-950/50 px-3 text-sm text-white outline-none focus:border-indigo-300"
+                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-300"
               />
             </label>
             <Button type="button" className="bg-indigo-600 hover:bg-indigo-500" disabled={savingWebhook} onClick={() => void saveWebhook()}>
@@ -366,7 +366,7 @@ export function UserAssignedPagesPanel() {
         </CardContent>
       </Card>
 
-      <Card className="border-violet-400/20 bg-violet-500/10">
+      <Card>
         <CardHeader>
           <CardTitle>Managed URLs</CardTitle>
         </CardHeader>
@@ -380,7 +380,7 @@ export function UserAssignedPagesPanel() {
             const metric = metricByLinkId.get(link.id);
 
             return (
-              <article key={link.id} className="rounded-md border border-white/10 bg-white/5 p-3 shadow-md shadow-black/10">
+              <article key={link.id} className="dashboard-row p-3">
                 <div className="min-w-0 space-y-1">
                   <p className="text-xs font-bold uppercase text-violet-200">Public URL</p>
                   <p className="truncate font-mono text-sm font-black text-cyan-200">
@@ -420,13 +420,13 @@ export function UserAssignedPagesPanel() {
                     <span className="rounded-md bg-rose-500/10 px-2 py-1 text-rose-200">
                       {metric?.highRiskEvents ?? 0} high risk
                     </span>
-                    <span className="col-span-2 rounded-md bg-white/5 px-2 py-1 text-slate-300 xl:col-span-1">
+                    <span className="col-span-2 rounded-md bg-slate-100 px-2 py-1 text-slate-600 xl:col-span-1">
                       Last visit: {metric?.lastVisitAt ? new Date(metric.lastVisitAt).toLocaleString() : "No visits yet"}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-3 grid gap-3 lg:grid-cols-[0.8fr_1.3fr]">
+                <div className="mt-3 grid gap-3 xl:grid-cols-[0.8fr_1.3fr]">
                   <div>
                     <label className="text-xs font-bold uppercase text-slate-400">Displayed page preset</label>
                     <select
@@ -448,7 +448,7 @@ export function UserAssignedPagesPanel() {
 
                   <div>
                     <p className="text-xs font-bold uppercase text-slate-400">Regenerate prefix</p>
-                    <div className="mt-1 grid gap-2 sm:grid-cols-[auto_auto_1fr_auto]">
+                    <div className="mt-1 grid gap-2 sm:grid-cols-2 xl:grid-cols-[auto_auto_1fr_auto]">
                       <Button
                         type="button"
                         className="h-8 bg-cyan-600 px-3 text-xs hover:bg-cyan-500"
@@ -488,7 +488,7 @@ export function UserAssignedPagesPanel() {
             );
           })}
           {links.length === 0 ? (
-            <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-sm text-slate-300">
+            <div className="dashboard-subpanel p-5 text-sm text-slate-300">
               {assignedDomain
                 ? "No managed URLs are available yet. Create one in Link Builder or ask the admin to assign one."
                 : "No assigned domain yet. Ask the admin to assign an active domain before creating URLs."}

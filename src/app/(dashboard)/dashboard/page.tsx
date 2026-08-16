@@ -153,10 +153,10 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <main className="dark-dashboard space-y-6 bg-[radial-gradient(circle_at_top_left,#0e7490_0%,transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_48%,#111827_100%)] p-6">
+    <main className="dark-dashboard dashboard-deep space-y-6 p-4 sm:p-6">
       <AutoRefresh />
-      <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20 md:flex-row md:items-center md:justify-between">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase text-cyan-300">Workspace</p>
           <h1 className="mt-1 text-4xl font-black text-white">Traffic Overview</h1>

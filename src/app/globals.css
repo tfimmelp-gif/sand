@@ -36,8 +36,89 @@ a {
 .dark-dashboard {
   min-height: 100vh;
   max-width: none;
-  background: #253144 !important;
+  background: #eef2f7 !important;
   color: #e5eefb;
+}
+
+.dark-dashboard.dashboard-deep,
+.dark-dashboard .dashboard-deep {
+  background: #243246 !important;
+}
+
+.dashboard-page {
+  min-height: 100vh;
+  background: #eef2f7;
+}
+
+.dashboard-card {
+  overflow: hidden;
+  border-color: #d8e0eb !important;
+  background: #ffffff !important;
+  color: #0f172a;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+.dashboard-card-header {
+  background: #f8fafc !important;
+}
+
+.dashboard-hero,
+.dashboard-nav,
+.dashboard-row,
+.dashboard-subpanel {
+  border: 1px solid #d8e0eb;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.07);
+}
+
+.dashboard-hero,
+.dashboard-nav {
+  border-radius: 0.75rem;
+}
+
+.dashboard-row,
+.dashboard-subpanel {
+  border-radius: 0.5rem;
+}
+
+.dashboard-nav {
+  color: #334155;
+}
+
+.dashboard-nav a:hover {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.dark-dashboard.dashboard-deep .dashboard-card,
+.dark-dashboard.dashboard-deep .dashboard-hero,
+.dark-dashboard.dashboard-deep .dashboard-nav,
+.dark-dashboard.dashboard-deep .dashboard-row,
+.dark-dashboard.dashboard-deep .dashboard-subpanel,
+.dark-dashboard .dashboard-card,
+.dark-dashboard .dashboard-hero,
+.dark-dashboard .dashboard-nav,
+.dark-dashboard .dashboard-row,
+.dark-dashboard .dashboard-subpanel {
+  border-color: #4b5e78 !important;
+  background: #324057 !important;
+  color: #f8fafc;
+  box-shadow: 0 14px 34px rgba(8, 13, 24, 0.22) !important;
+}
+
+.dark-dashboard .dashboard-card-header {
+  border-color: #4b5e78 !important;
+  background: #384963 !important;
+}
+
+.dark-dashboard .dashboard-nav {
+  color: #dbeafe;
+}
+
+.dark-dashboard .dashboard-nav a:hover {
+  background: #42536c;
+  color: #ffffff;
 }
 
 .dark-dashboard .text-slate-950,
@@ -142,7 +223,7 @@ a {
 
 .dark-dashboard [class*="bg-white/5"],
 .dark-dashboard [class*="bg-white/10"] {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: #3a4a63 !important;
 }
 
 .dark-dashboard .bg-blue-50 {
@@ -228,22 +309,18 @@ a {
 }
 
 .light-mode .dark-dashboard {
-  background:
-    radial-gradient(circle at top left, rgba(14, 165, 233, 0.22), transparent 34%),
-    linear-gradient(135deg, #f8fafc 0%, #eef6ff 45%, #f5f3ff 100%) !important;
+  background: #eef2f7 !important;
   color: #0f172a;
 }
 
-.light-mode .dark-dashboard > div > div:first-child,
-.light-mode .dark-dashboard section,
-.light-mode .dark-dashboard article,
-.light-mode .dark-dashboard [class*="bg-white/5"],
-.light-mode .dark-dashboard [class*="bg-slate-950"],
-.light-mode .dark-dashboard [class*="bg-slate-900"],
-.light-mode .dark-dashboard [class*="bg-black/"] {
-  background-color: rgba(255, 255, 255, 0.88) !important;
+.light-mode .dark-dashboard .dashboard-card,
+.light-mode .dark-dashboard .dashboard-hero,
+.light-mode .dark-dashboard .dashboard-nav,
+.light-mode .dark-dashboard .dashboard-row,
+.light-mode .dark-dashboard .dashboard-subpanel {
+  background-color: #ffffff !important;
   border-color: rgba(148, 163, 184, 0.32) !important;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
 }
 
 .light-mode .dark-dashboard .text-white,

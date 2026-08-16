@@ -692,8 +692,8 @@ export default function SuperAdminUsersPage() {
 
   if (isCheckingAuth) {
     return (
-      <main className="dark-dashboard flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,#020617_0%,#111827_48%,#0f172a_100%)] p-6">
-        <div className="rounded-lg border border-white/10 bg-white/5 p-6 text-sm font-semibold text-slate-200 shadow-xl shadow-black/20">
+      <main className="dark-dashboard dashboard-deep flex min-h-screen items-center justify-center p-6">
+        <div className="dashboard-hero p-6 text-sm font-semibold">
           Checking super admin access...
         </div>
       </main>
@@ -701,9 +701,9 @@ export default function SuperAdminUsersPage() {
   }
 
   return (
-    <main className="dark-dashboard space-y-6 bg-[radial-gradient(circle_at_top_left,#1d4ed8_0%,transparent_32%),linear-gradient(135deg,#020617_0%,#111827_48%,#0f172a_100%)] p-6">
-      <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20 md:flex-row md:items-center md:justify-between">
+    <main className="dark-dashboard dashboard-deep space-y-6 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase text-sky-300">Super Admin</p>
           <h1 className="mt-1 text-4xl font-black text-white">System Infrastructure Manager</h1>
@@ -721,7 +721,7 @@ export default function SuperAdminUsersPage() {
         </div>
       </div>
 
-      <nav className="sticky top-0 z-10 flex flex-wrap gap-2 rounded-lg border border-white/10 bg-slate-950/80 p-3 text-sm font-bold text-slate-200 shadow-xl shadow-black/20 backdrop-blur">
+      <nav className="dashboard-nav sticky top-0 z-10 flex flex-wrap gap-2 p-2 text-sm font-bold">
         <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#tenant-access">
           Tenant Access
         </a>
@@ -792,7 +792,7 @@ export default function SuperAdminUsersPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <form onSubmit={handleCreateManagedLink} className="rounded-lg border border-white/10 bg-white/5 p-4">
+          <form onSubmit={handleCreateManagedLink} className="dashboard-subpanel p-4">
             <div className="grid gap-4 lg:grid-cols-2">
               <label className="text-sm font-medium text-slate-700">
                 Tenant
@@ -913,7 +913,7 @@ export default function SuperAdminUsersPage() {
               const hasEditChanges = edit.slug !== link.slug || edit.destinationUrl !== link.destinationUrl;
 
               return (
-                <article key={link.id} className="rounded-md border border-white/10 bg-white/5 p-3">
+                <article key={link.id} className="dashboard-row p-3">
                   <div className="grid gap-3 xl:grid-cols-[1fr_1.7fr]">
                     <div className="min-w-0 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1258,7 +1258,7 @@ export default function SuperAdminUsersPage() {
                   ) : null}
                 </div>
 
-                <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+                <div className="dashboard-subpanel p-3 text-xs">
                   <p className="font-bold uppercase text-cyan-200">DNS required</p>
                   <p className="mt-2">
                     Root domain: add an <span className="font-mono font-bold">A</span> record to your production server IP.
@@ -1327,8 +1327,8 @@ export default function SuperAdminUsersPage() {
         <CardContent>
           <div className="grid gap-4">
             {users.map((user) => (
-              <article key={user.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr_1.1fr_1.2fr]">
+              <article key={user.id} className="dashboard-row p-4">
+                <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[0.85fr_1fr_1fr_1.05fr]">
                   <div className="space-y-3">
                     <div>
                       <p className="truncate font-semibold text-slate-950">{user.email}</p>
@@ -1342,7 +1342,7 @@ export default function SuperAdminUsersPage() {
                   </div>
 
                   {user.role === "WORKSPACE_USER" ? (
-                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3">
+                    <div className="dashboard-subpanel p-3 shadow-none">
                       <p className="text-xs font-bold uppercase text-sky-300">Assigned Domain</p>
                       <label className="mt-3 block text-sm font-medium text-slate-700">
                         Domain
@@ -1388,11 +1388,11 @@ export default function SuperAdminUsersPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3 text-sm text-slate-400">System access does not require domain assignment.</div>
+                    <div className="dashboard-subpanel p-3 text-sm text-slate-400 shadow-none">System access does not require domain assignment.</div>
                   )}
 
                   {user.role === "WORKSPACE_USER" ? (
-                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3">
+                    <div className="dashboard-subpanel p-3 shadow-none">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-bold uppercase text-emerald-300">Tenant Panel</p>
                         <span
@@ -1436,11 +1436,11 @@ export default function SuperAdminUsersPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3 text-sm text-slate-400">Super admin panel access is unlimited.</div>
+                    <div className="dashboard-subpanel p-3 text-sm text-slate-400 shadow-none">Super admin panel access is unlimited.</div>
                   )}
 
                   {user.role === "WORKSPACE_USER" ? (
-                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3">
+                    <div className="dashboard-subpanel p-3 shadow-none">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-bold uppercase text-violet-300">Auto-Rotation</p>
                         <span

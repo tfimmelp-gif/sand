@@ -229,9 +229,9 @@ export default function UserWorkspaceLinksPage() {
   }
 
   return (
-    <main className="dark-dashboard space-y-6 bg-[radial-gradient(circle_at_top_left,#7c3aed_0%,transparent_30%),linear-gradient(135deg,#020617_0%,#111827_48%,#0f172a_100%)] p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/20 md:flex-row md:items-center md:justify-between">
+    <main className="dark-dashboard dashboard-deep space-y-6 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="dashboard-hero flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase text-violet-300">Routing</p>
           <h1 className="mt-1 text-4xl font-black text-white">Link Builder</h1>

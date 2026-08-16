@@ -8,7 +8,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <section
       className={cx(
-        "rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70 backdrop-blur dark-dashboard:border-white/10 dark-dashboard:bg-slate-900/70 dark-dashboard:shadow-black/20",
+        "dashboard-card rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70",
         className,
       )}
       {...props}
@@ -17,7 +17,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cx("border-b border-slate-200/80 px-4 py-3 dark-dashboard:border-white/10", className)} {...props} />;
+  return <div className={cx("dashboard-card-header border-b border-slate-200/80 px-4 py-3", className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
