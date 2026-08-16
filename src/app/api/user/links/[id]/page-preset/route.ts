@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { primeLinkMetadataCache } from "@/lib/link-cache";
 import { isPagePresetKey } from "@/lib/page-presets";
 import { prisma } from "@/lib/prisma";
 import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
@@ -30,20 +31,40 @@ export async function PATCH(req: Request, context: RouteContext) {
     return NextResponse.json({ error: "Choose one of the available page presets." }, { status: 400 });
   }
 
-  const link = await prisma.link.updateMany({
+  const existingLink = await prisma.link.findFirst({
     where: {
       id,
       userId: session.user.id,
       ...linkAccessWhere(),
     },
+    select: { id: true },
+  });
+
+  if (!existingLink) {
+    return NextResponse.json({ error: "Link not found." }, { status: 404 });
+  }
+
+  const link = await prisma.link.update({
+    where: { id: existingLink.id },
     data: {
       indexPagePreset,
     },
+    include: {
+      domain: { select: { hostString: true } },
+    },
   });
 
-  if (link.count === 0) {
-    return NextResponse.json({ error: "Link not found." }, { status: 404 });
-  }
+  await primeLinkMetadataCache({
+    linkId: link.id,
+    host: link.domain.hostString,
+    slug: link.slug,
+    canonicalSlug: link.slug,
+    destinationUrl: link.destinationUrl,
+    indexPagePreset: link.indexPagePreset,
+    redirectSource: link.redirectSource,
+    expiresAt: link.expiresAt?.toISOString() ?? null,
+    status: link.status,
+  }).catch(() => undefined);
 
   return NextResponse.json({ ok: true, indexPagePreset });
 }

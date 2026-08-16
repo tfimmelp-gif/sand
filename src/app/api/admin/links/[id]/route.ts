@@ -4,10 +4,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { parseExpiryInput } from "@/lib/expiration";
 import { activeSlugAliasExists, LINK_ALIAS_TTL_SECONDS, linkAliasExpiresAt } from "@/lib/link-aliases";
+import { clearLinkAndAliasCaches } from "@/lib/link-rotation";
+import { primeLinkMetadataCache } from "@/lib/link-cache";
 import { isValidSlug, validateDestinationUrl } from "@/lib/links";
 import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
-import { redis } from "@/lib/redis";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -116,11 +117,32 @@ export async function PATCH(req: Request, context: RouteContext) {
     try {
       await Promise.all([
         slugChanged
-          ? redis.set(`link:${existingLink.domain.hostString}:${existingLink.slug}`, existingLink.destinationUrl, {
-              ex: LINK_ALIAS_TTL_SECONDS,
-            })
+          ? primeLinkMetadataCache(
+              {
+                linkId: existingLink.id,
+                host: existingLink.domain.hostString,
+                slug: existingLink.slug,
+                canonicalSlug: link.slug,
+                destinationUrl: link.destinationUrl,
+                indexPagePreset: link.indexPagePreset,
+                redirectSource: link.redirectSource,
+                expiresAt: link.expiresAt?.toISOString() ?? null,
+                status: link.status,
+              },
+              LINK_ALIAS_TTL_SECONDS,
+            )
           : Promise.resolve(),
-        redis.set(`link:${existingLink.domain.hostString}:${link.slug}`, link.destinationUrl, { ex: 60 * 60 * 24 }),
+        primeLinkMetadataCache({
+          linkId: link.id,
+          host: existingLink.domain.hostString,
+          slug: link.slug,
+          canonicalSlug: link.slug,
+          destinationUrl: link.destinationUrl,
+          indexPagePreset: link.indexPagePreset,
+          redirectSource: link.redirectSource,
+          expiresAt: link.expiresAt?.toISOString() ?? null,
+          status: link.status,
+        }),
       ]);
     } catch {
       // Cache is best-effort; DB remains the source of truth.
@@ -164,10 +186,11 @@ export async function DELETE(_req: Request, context: RouteContext) {
   await prisma.link.delete({ where: { id } });
 
   try {
-    await Promise.all([
-      redis.del(`link:${existingLink.domain.hostString}:${existingLink.slug}`),
-      ...existingLink.slugAliases.map((alias) => redis.del(`link:${existingLink.domain.hostString}:${alias.slug}`)),
-    ]);
+    await clearLinkAndAliasCaches({
+      host: existingLink.domain.hostString,
+      slug: existingLink.slug,
+      aliases: existingLink.slugAliases,
+    });
   } catch {
     // Cache cleanup is best-effort.
   }

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
+import { enqueueAnalyticsEvent } from "@/lib/analytics-queue";
 import { getRequestIp, parseUserAgent } from "@/lib/request-insights";
-import { publicLinkAccessWhere } from "@/lib/tenant-access";
+import { resolvePublicLinkMetadata } from "@/lib/public-link";
 import { evaluateTrafficQuality } from "@/lib/traffic-quality";
 
 export async function POST(req: Request) {
@@ -26,36 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing host or slug." }, { status: 400 });
   }
 
-  let link = await prisma.link.findFirst({
-    where: {
-      slug: payload.slug,
-      ...publicLinkAccessWhere(payload.host),
-    },
-    select: { id: true },
-  });
-
-  if (!link) {
-    const alias = await prisma.linkSlugAlias.findFirst({
-      where: {
-        slug: payload.slug,
-        expiresAt: {
-          gt: new Date(),
-        },
-        domain: {
-          hostString: payload.host,
-          status: "ACTIVE",
-        },
-        link: publicLinkAccessWhere(payload.host),
-      },
-      select: {
-        link: {
-          select: { id: true },
-        },
-      },
-    });
-
-    link = alias?.link ?? null;
-  }
+  const link = await resolvePublicLinkMetadata(payload.host, payload.slug);
 
   if (!link) {
     return NextResponse.json({ ok: true });
@@ -70,16 +41,18 @@ export async function POST(req: Request) {
     userAgent: payload.userAgent,
   });
 
-  await prisma.clickLog.create({
-    data: {
-      linkId: link.id,
-      country: payload.country || "Unknown",
-      city: payload.city || "Unknown",
-      referrer: payload.referrer || "Direct",
-      ipAddress: payload.ipAddress || getRequestIp(req.headers),
-      ...trafficQuality,
-      ...userAgent,
-    },
+  await enqueueAnalyticsEvent({
+    kind: "click",
+    linkId: link.linkId,
+    host: payload.host,
+    slug: payload.slug,
+    country: payload.country || "Unknown",
+    city: payload.city || "Unknown",
+    referrer: payload.referrer || "Direct",
+    ipAddress: payload.ipAddress || getRequestIp(req.headers),
+    userAgent: payload.userAgent,
+    ...trafficQuality,
+    ...userAgent,
   });
 
   return NextResponse.json({ ok: true });

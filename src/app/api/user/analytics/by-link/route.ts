@@ -17,14 +17,6 @@ type LinkMetric = {
   lastVisitAt: string | null;
 };
 
-function newestDate(current: Date | null, next: Date) {
-  if (!current || next.getTime() > current.getTime()) {
-    return next;
-  }
-
-  return current;
-}
-
 export async function GET() {
   const session = await getServerSession(authOptions);
 
@@ -45,51 +37,20 @@ export async function GET() {
     },
     select: {
       id: true,
-      clicks: {
-        select: {
-          ipAddress: true,
-          isBot: true,
-          riskScore: true,
-          timestamp: true,
-        },
-      },
-      activities: {
-        select: {
-          eventType: true,
-          ipAddress: true,
-          isBot: true,
-          riskScore: true,
-          timestamp: true,
-        },
-      },
+      metricSummary: true,
     },
   });
 
   const metrics: LinkMetric[] = links.map((link) => {
-    const visitors = new Set<string>();
-    let lastVisitAt: Date | null = null;
-
-    for (const click of link.clicks) {
-      visitors.add(click.ipAddress);
-      lastVisitAt = newestDate(lastVisitAt, click.timestamp);
-    }
-
-    for (const activity of link.activities) {
-      visitors.add(activity.ipAddress);
-      lastVisitAt = newestDate(lastVisitAt, activity.timestamp);
-    }
-
     return {
       linkId: link.id,
-      clicks: link.clicks.length,
-      uniqueVisitors: visitors.size,
-      pageViews: link.activities.filter((activity) => activity.eventType === "page_view").length,
-      formSubmissions: link.activities.filter((activity) => activity.eventType === "form_submit").length,
-      botVisits: link.clicks.filter((click) => click.isBot).length + link.activities.filter((activity) => activity.isBot).length,
-      highRiskEvents:
-        link.clicks.filter((click) => click.riskScore >= 75).length +
-        link.activities.filter((activity) => activity.riskScore >= 75).length,
-      lastVisitAt: lastVisitAt ? lastVisitAt.toISOString() : null,
+      clicks: link.metricSummary?.clicks ?? 0,
+      uniqueVisitors: link.metricSummary?.uniqueIps ?? 0,
+      pageViews: link.metricSummary?.pageViews ?? 0,
+      formSubmissions: link.metricSummary?.formSubmissions ?? 0,
+      botVisits: link.metricSummary?.botVisits ?? 0,
+      highRiskEvents: link.metricSummary?.highRiskEvents ?? 0,
+      lastVisitAt: link.metricSummary?.lastVisitAt ? link.metricSummary.lastVisitAt.toISOString() : null,
     };
   });
 

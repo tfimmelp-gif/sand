@@ -16,6 +16,11 @@ type AdminUser = {
   assignedDomainExpiresAt?: string | null;
   tenantAccessActive: boolean;
   tenantAccessExpiresAt?: string | null;
+  autoRotationEnabled: boolean;
+  autoRotationMode: "SHORT" | "LONG";
+  autoRotationIntervalHours?: number | null;
+  nextAutoRotationAt?: string | null;
+  lastAutoRotationAt?: string | null;
   assignedDomain?: {
     id: string;
     hostString: string;
@@ -140,6 +145,9 @@ export default function SuperAdminUsersPage() {
   const [savingLinkRedirectId, setSavingLinkRedirectId] = useState("");
   const [savingTenantAccessUserId, setSavingTenantAccessUserId] = useState("");
   const [tenantAccessBundles, setTenantAccessBundles] = useState<Record<string, string>>({});
+  const [rotationPolicies, setRotationPolicies] = useState<
+    Record<string, { enabled: boolean; mode: "SHORT" | "LONG"; intervalHours: string }>
+  >({});
   const [domainExpiryBundles, setDomainExpiryBundles] = useState<Record<string, string>>({});
   const [linkExpiryBundles, setLinkExpiryBundles] = useState<Record<string, string>>({});
   const [linkEdits, setLinkEdits] = useState<Record<string, { destinationUrl: string; slug: string }>>({});
@@ -605,6 +613,38 @@ export default function SuperAdminUsersPage() {
 
     const payload = await response.json().catch(() => ({ error: "Unable to update tenant access." }));
     setMessage(payload.error ?? "Unable to update tenant access.");
+    setSavingTenantAccessUserId("");
+  }
+
+  async function handleRotationPolicy(user: AdminUser) {
+    setSavingTenantAccessUserId(user.id);
+    setMessage("");
+    const policy = rotationPolicies[user.id] ?? {
+      enabled: user.autoRotationEnabled,
+      mode: user.autoRotationMode ?? "SHORT",
+      intervalHours: String(user.autoRotationIntervalHours ?? 24),
+    };
+
+    const response = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id,
+        autoRotationEnabled: policy.enabled,
+        autoRotationMode: policy.mode,
+        autoRotationIntervalHours: Number(policy.intervalHours),
+      }),
+    });
+
+    if (response.ok) {
+      setMessage(policy.enabled ? "Auto-rotation policy saved." : "Auto-rotation disabled.");
+      await fetchUsers();
+      setSavingTenantAccessUserId("");
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to save auto-rotation policy." }));
+    setMessage(payload.error ?? "Unable to save auto-rotation policy.");
     setSavingTenantAccessUserId("");
   }
 
@@ -1288,7 +1328,7 @@ export default function SuperAdminUsersPage() {
           <div className="grid gap-4">
             {users.map((user) => (
               <article key={user.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr_1.3fr]">
+                <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr_1.1fr_1.2fr]">
                   <div className="space-y-3">
                     <div>
                       <p className="truncate font-semibold text-slate-950">{user.email}</p>
@@ -1398,6 +1438,96 @@ export default function SuperAdminUsersPage() {
                   ) : (
                     <div className="rounded-md border border-white/10 bg-slate-950/20 p-3 text-sm text-slate-400">Super admin panel access is unlimited.</div>
                   )}
+
+                  {user.role === "WORKSPACE_USER" ? (
+                    <div className="rounded-md border border-white/10 bg-slate-950/20 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase text-violet-300">Auto-Rotation</p>
+                        <span
+                          className={
+                            user.autoRotationEnabled
+                              ? "inline-flex rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700"
+                              : "inline-flex rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700"
+                          }
+                        >
+                          {user.autoRotationEnabled ? "Enabled" : "Disabled"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-400">
+                        Next: {user.nextAutoRotationAt ? new Date(user.nextAutoRotationAt).toLocaleString() : "Not scheduled"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Last: {user.lastAutoRotationAt ? new Date(user.lastAutoRotationAt).toLocaleString() : "Never"}
+                      </p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[0.8fr_1fr]">
+                        <select
+                          value={(rotationPolicies[user.id]?.enabled ?? user.autoRotationEnabled) ? "on" : "off"}
+                          onChange={(event) =>
+                            setRotationPolicies((current) => ({
+                              ...current,
+                              [user.id]: {
+                                enabled: event.target.value === "on",
+                                mode: current[user.id]?.mode ?? user.autoRotationMode ?? "SHORT",
+                                intervalHours: current[user.id]?.intervalHours ?? String(user.autoRotationIntervalHours ?? 24),
+                              },
+                            }))
+                          }
+                          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                        >
+                          <option value="off">Disabled</option>
+                          <option value="on">Enabled</option>
+                        </select>
+                        <select
+                          value={rotationPolicies[user.id]?.mode ?? user.autoRotationMode ?? "SHORT"}
+                          onChange={(event) =>
+                            setRotationPolicies((current) => ({
+                              ...current,
+                              [user.id]: {
+                                enabled: current[user.id]?.enabled ?? user.autoRotationEnabled,
+                                mode: event.target.value as "SHORT" | "LONG",
+                                intervalHours: current[user.id]?.intervalHours ?? String(user.autoRotationIntervalHours ?? 24),
+                              },
+                            }))
+                          }
+                          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                        >
+                          <option value="SHORT">Short prefix</option>
+                          <option value="LONG">Long prefix</option>
+                        </select>
+                      </div>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                        <select
+                          value={rotationPolicies[user.id]?.intervalHours ?? String(user.autoRotationIntervalHours ?? 24)}
+                          onChange={(event) =>
+                            setRotationPolicies((current) => ({
+                              ...current,
+                              [user.id]: {
+                                enabled: current[user.id]?.enabled ?? user.autoRotationEnabled,
+                                mode: current[user.id]?.mode ?? user.autoRotationMode ?? "SHORT",
+                                intervalHours: event.target.value,
+                              },
+                            }))
+                          }
+                          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm outline-none focus:border-sky-400"
+                        >
+                          <option value="1">Every 1 hour</option>
+                          <option value="6">Every 6 hours</option>
+                          <option value="12">Every 12 hours</option>
+                          <option value="24">Every 1 day</option>
+                          <option value="72">Every 3 days</option>
+                          <option value="168">Every 7 days</option>
+                        </select>
+                        <Button
+                          type="button"
+                          className="h-9 bg-violet-600 px-3 hover:bg-violet-500"
+                          disabled={savingTenantAccessUserId === user.id}
+                          onClick={() => void handleRotationPolicy(user)}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </article>
             ))}

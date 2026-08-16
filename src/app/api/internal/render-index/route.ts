@@ -3,14 +3,8 @@ import { NextResponse } from "next/server";
 import { DEFAULT_PAGE_PRESETS, ensureDefaultPagePresets, renderIndexHtml } from "@/lib/page-presets";
 import { isHtmlContentType, presetFileBody } from "@/lib/preset-package";
 import { prisma } from "@/lib/prisma";
+import { normalizePublicSlug, resolvePublicLinkMetadata } from "@/lib/public-link";
 import { publicLinkAccessWhere } from "@/lib/tenant-access";
-
-function normalizeSlug(slug: string) {
-  return slug
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "")
-    .replace(/\/index\.html$/i, "");
-}
 
 export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
@@ -24,7 +18,7 @@ export async function POST(req: Request) {
     slug?: string;
     filePath?: string;
   };
-  const normalizedSlug = slug ? normalizeSlug(slug) : "";
+  const normalizedSlug = slug ? normalizePublicSlug(slug) : "";
   const normalizedFilePath = (filePath || "index.html").replace(/^\/+/, "").replace(/\\/g, "/");
 
   if (!host || normalizedFilePath.includes("..")) {
@@ -33,63 +27,50 @@ export async function POST(req: Request) {
 
   await ensureDefaultPagePresets();
 
-  let link = await prisma.link.findFirst({
-    where: {
-      ...(normalizedSlug ? { slug: normalizedSlug } : {}),
-      ...publicLinkAccessWhere(host),
-    },
-    orderBy: { createdAt: "desc" },
-    select: {
-      destinationUrl: true,
-      indexPagePreset: true,
-      redirectSource: true,
-      slug: true,
-      domain: {
-        select: {
-          hostString: true,
-        },
-      },
-    },
-  });
-
-  if (!link && normalizedSlug) {
-    const alias = await prisma.linkSlugAlias.findFirst({
-      where: {
-        slug: normalizedSlug,
-        expiresAt: {
-          gt: new Date(),
-        },
-        domain: {
-          hostString: host,
-          status: "ACTIVE",
-        },
-        link: publicLinkAccessWhere(host),
-      },
-      select: {
-        link: {
+  const link = normalizedSlug
+    ? await resolvePublicLinkMetadata(host, normalizedSlug)
+    : await prisma.link
+        .findFirst({
+          where: {
+            ...publicLinkAccessWhere(host),
+          },
+          orderBy: { createdAt: "desc" },
           select: {
+            id: true,
             destinationUrl: true,
             indexPagePreset: true,
             redirectSource: true,
             slug: true,
+            expiresAt: true,
+            status: true,
             domain: {
               select: {
                 hostString: true,
               },
             },
           },
-        },
-      },
-    });
-
-    link = alias?.link ?? null;
-  }
+        })
+        .then((rootLink) =>
+          rootLink
+            ? {
+                linkId: rootLink.id,
+                destinationUrl: rootLink.destinationUrl,
+                indexPagePreset: rootLink.indexPagePreset,
+                redirectSource: rootLink.redirectSource,
+                slug: rootLink.slug,
+                canonicalSlug: rootLink.slug,
+                expiresAt: rootLink.expiresAt?.toISOString() ?? null,
+                status: rootLink.status,
+                host: rootLink.domain.hostString,
+              }
+            : null,
+        );
 
   if (!link) {
     return NextResponse.json({ found: false }, { status: 404 });
   }
 
-  const renderSlug = normalizedSlug || link.slug;
+  const renderSlug = normalizedSlug || link.canonicalSlug;
 
   if (normalizedFilePath !== "index.html") {
     const file = await prisma.linkPagePresetFile.findUnique({
@@ -114,9 +95,9 @@ export async function POST(req: Request) {
       ? renderIndexHtml(file.content, {
           destinationUrl: link.destinationUrl,
           adminDestinationUrl: link.destinationUrl,
-          host: link.domain.hostString,
+          host: link.host,
           redirectSource: link.redirectSource,
-          shortUrl: `${link.domain.hostString}/${renderSlug}`,
+          shortUrl: `${link.host}/${renderSlug}`,
           slug: renderSlug,
         })
       : presetFileBody(file);
@@ -140,9 +121,9 @@ export async function POST(req: Request) {
   const html = renderIndexHtml(preset?.htmlContent ?? fallback, {
     destinationUrl: link.destinationUrl,
     adminDestinationUrl: link.destinationUrl,
-    host: link.domain.hostString,
+          host: link.host,
     redirectSource: link.redirectSource,
-    shortUrl: `${link.domain.hostString}/${renderSlug}`,
+    shortUrl: `${link.host}/${renderSlug}`,
     slug: renderSlug,
   });
 

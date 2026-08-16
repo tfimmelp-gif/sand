@@ -32,7 +32,7 @@ export async function GET() {
     return NextResponse.json({ error: access.reason }, { status: 403 });
   }
 
-  const [links, clicks, activities] = await Promise.all([
+  const [links, summaries, clicks, activities] = await Promise.all([
     prisma.link.findMany({
       where: {
         userId: session.user.id,
@@ -45,6 +45,14 @@ export async function GET() {
           select: {
             status: true,
           },
+        },
+      },
+    }),
+    prisma.linkMetricSummary.findMany({
+      where: {
+        link: {
+          userId: session.user.id,
+          ...linkAccessWhere(),
         },
       },
     }),
@@ -82,16 +90,42 @@ export async function GET() {
   ]);
 
   const healthyDomains = links.filter((link) => link.domain.status === "ACTIVE").length;
+  const summaryTotals = summaries.reduce(
+    (total, summary) => ({
+      clicks: total.clicks + summary.clicks,
+      uniqueVisitors: total.uniqueVisitors + summary.uniqueIps,
+      pageViews: total.pageViews + summary.pageViews,
+      formSubmissions: total.formSubmissions + summary.formSubmissions,
+      botVisits: total.botVisits + summary.botVisits,
+      highRiskEvents: total.highRiskEvents + summary.highRiskEvents,
+    }),
+    {
+      clicks: 0,
+      uniqueVisitors: 0,
+      pageViews: 0,
+      formSubmissions: 0,
+      botVisits: 0,
+      highRiskEvents: 0,
+    },
+  );
+  const hasSummaries = summaries.length > 0;
 
   return noStoreJson({
-    totalClicks: clicks.length,
-    uniqueVisitors: new Set([...clicks.map((click) => click.ipAddress), ...activities.map((activity) => activity.ipAddress)]).size,
+    totalClicks: hasSummaries ? summaryTotals.clicks : clicks.length,
+    uniqueVisitors: hasSummaries
+      ? summaryTotals.uniqueVisitors
+      : new Set([...clicks.map((click) => click.ipAddress), ...activities.map((activity) => activity.ipAddress)]).size,
     activeLinks: links.filter((link) => link.status === "ACTIVE").length,
-    pageViews: activities.filter((activity) => activity.eventType === "page_view").length,
-    formSubmissions: activities.filter((activity) => activity.eventType === "form_submit").length,
-    suspectedBots: clicks.filter((click) => click.isBot).length + activities.filter((activity) => activity.isBot).length,
-    highRiskEvents:
-      clicks.filter((click) => click.riskScore >= 75).length + activities.filter((activity) => activity.riskScore >= 75).length,
+    pageViews: hasSummaries ? summaryTotals.pageViews : activities.filter((activity) => activity.eventType === "page_view").length,
+    formSubmissions: hasSummaries
+      ? summaryTotals.formSubmissions
+      : activities.filter((activity) => activity.eventType === "form_submit").length,
+    suspectedBots: hasSummaries
+      ? summaryTotals.botVisits
+      : clicks.filter((click) => click.isBot).length + activities.filter((activity) => activity.isBot).length,
+    highRiskEvents: hasSummaries
+      ? summaryTotals.highRiskEvents
+      : clicks.filter((click) => click.riskScore >= 75).length + activities.filter((activity) => activity.riskScore >= 75).length,
     domainHealth: links.length ? Math.round((healthyDomains / links.length) * 100) : 100,
     topCountries: topCounts(clicks.map((click) => click.country)),
     topReferrers: topCounts(clicks.map((click) => click.referrer)),

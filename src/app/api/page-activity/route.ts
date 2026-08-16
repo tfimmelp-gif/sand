@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { sendDiscordFormSubmission } from "@/lib/discord-webhook";
-import { prisma } from "@/lib/prisma";
+import { enqueueAnalyticsEvent } from "@/lib/analytics-queue";
+import { resolvePublicLinkMetadata } from "@/lib/public-link";
 import { getRequestIp, normalizeHost, parseUserAgent } from "@/lib/request-insights";
-import { publicLinkAccessWhere } from "@/lib/tenant-access";
 import { evaluateTrafficQuality } from "@/lib/traffic-quality";
 
 export async function POST(req: Request) {
@@ -23,46 +22,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unsupported activity type." }, { status: 400 });
   }
 
-  let link = await prisma.link.findFirst({
-    where: {
-      slug: payload.slug,
-      ...publicLinkAccessWhere(host),
-    },
-    select: {
-      id: true,
-      slug: true,
-      domain: { select: { hostString: true } },
-      user: { select: { discordWebhookUrl: true } },
-    },
-  });
-
-  if (!link) {
-    const alias = await prisma.linkSlugAlias.findFirst({
-      where: {
-        slug: payload.slug,
-        expiresAt: {
-          gt: new Date(),
-        },
-        domain: {
-          hostString: host,
-          status: "ACTIVE",
-        },
-        link: publicLinkAccessWhere(host),
-      },
-      select: {
-        link: {
-          select: {
-            id: true,
-            slug: true,
-            domain: { select: { hostString: true } },
-            user: { select: { discordWebhookUrl: true } },
-          },
-        },
-      },
-    });
-
-    link = alias?.link ?? null;
-  }
+  const link = await resolvePublicLinkMetadata(host, payload.slug);
 
   if (!link) {
     return NextResponse.json({ ok: true });
@@ -77,37 +37,21 @@ export async function POST(req: Request) {
     userAgent: req.headers.get("user-agent"),
   });
 
-  const activity = await prisma.pageActivity.create({
-    data: {
-      linkId: link.id,
-      eventType: payload.eventType,
-      path: payload.path || "/",
-      ipAddress: getRequestIp(req.headers),
-      country: req.headers.get("cf-ipcountry") || "Unknown",
-      city: req.headers.get("x-vercel-ip-city") || "Unknown",
-      referrer: req.headers.get("referer") || "Direct",
-      metadata: typeof payload.metadata === "object" && payload.metadata !== null ? payload.metadata : undefined,
-      ...trafficQuality,
-      ...userAgent,
-    },
-  });
-
-  await sendDiscordFormSubmission({
-    webhookUrl: link.user.discordWebhookUrl,
-    host: link.domain.hostString,
-    slug: link.slug,
-    path: activity.path,
-    ipAddress: activity.ipAddress,
-    country: activity.country,
-    city: activity.city,
-    browser: activity.browser,
-    os: activity.os,
-    device: activity.device,
-    referrer: activity.referrer,
-    isBot: activity.isBot,
-    botReason: activity.botReason,
-    riskScore: activity.riskScore,
-    metadata: activity.metadata,
+  await enqueueAnalyticsEvent({
+    kind: "page_activity",
+    linkId: link.linkId,
+    host,
+    slug: payload.slug,
+    eventType: payload.eventType,
+    path: payload.path || "/",
+    ipAddress: getRequestIp(req.headers),
+    country: req.headers.get("cf-ipcountry") || "Unknown",
+    city: req.headers.get("x-vercel-ip-city") || "Unknown",
+    referrer: req.headers.get("referer") || "Direct",
+    metadata: payload.metadata,
+    userAgent: req.headers.get("user-agent"),
+    ...trafficQuality,
+    ...userAgent,
   });
 
   return NextResponse.json({ ok: true });

@@ -3,11 +3,11 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { activeSlugAliasExists } from "@/lib/link-aliases";
+import { primeLinkMetadataCache } from "@/lib/link-cache";
 import { isValidSlug, validateDestinationUrl } from "@/lib/links";
 import { noStoreJson } from "@/lib/no-store";
 import { ensureDefaultPagePresets, isPagePresetKey } from "@/lib/page-presets";
 import { prisma } from "@/lib/prisma";
-import { redis } from "@/lib/redis";
 import { assignedDomainAccessWhere, getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
 export async function GET() {
@@ -149,7 +149,17 @@ export async function POST(req: Request) {
     });
 
     try {
-      await redis.set(`link:${domain.hostString}:${slug}`, parsedDestination, { ex: 60 * 60 * 24 });
+      await primeLinkMetadataCache({
+        linkId: link.id,
+        host: domain.hostString,
+        slug,
+        canonicalSlug: slug,
+        destinationUrl: parsedDestination,
+        indexPagePreset: link.indexPagePreset,
+        redirectSource: link.redirectSource,
+        expiresAt: link.expiresAt?.toISOString() ?? null,
+        status: link.status,
+      });
     } catch {
       // The database write is the source of truth; cache priming can be retried on first redirect.
     }

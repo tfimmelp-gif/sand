@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
-import { activeSlugAliasExists, LINK_ALIAS_TTL_SECONDS, linkAliasExpiresAt } from "@/lib/link-aliases";
-import { generateSlug, isValidSlug } from "@/lib/links";
+import { isValidSlug } from "@/lib/links";
+import { rotateLinkPrefix } from "@/lib/link-rotation";
 import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
-import { redis } from "@/lib/redis";
 import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 
 type RouteContext = {
@@ -54,105 +53,19 @@ export async function PATCH(req: Request, context: RouteContext) {
     return noStoreJson({ error: "Link not found." }, { status: 404 });
   }
 
-  let nextSlug = requestedSlug ?? generateSlug(requestedMode === "long" ? 32 : 8);
-  let updatedLink: Awaited<ReturnType<typeof updateLinkSlugWithAlias>> | null = null;
-
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const aliasCollision = await activeSlugAliasExists(existingLink.domainId, nextSlug);
-
-    if (aliasCollision) {
-      if (requestedSlug) {
-        return noStoreJson({ error: "That slug is already reserved by a recently rotated URL." }, { status: 409 });
-      }
-
-      nextSlug = generateSlug(requestedMode === "long" ? 32 : 8);
-      continue;
-    }
-
-    try {
-      updatedLink = await updateLinkSlugWithAlias(existingLink.id, existingLink.domainId, existingLink.slug, nextSlug);
-      break;
-    } catch {
-      if (requestedSlug) {
-        return noStoreJson({ error: "That slug is already taken for this domain." }, { status: 409 });
-      }
-
-      nextSlug = generateSlug(requestedMode === "long" ? 32 : 8);
-    }
-  }
-
-  if (!updatedLink) {
-    return noStoreJson({ error: "Could not generate an available slug." }, { status: 500 });
-  }
-
   try {
-    await Promise.all([
-      redis.set(`link:${existingLink.domain.hostString}:${existingLink.slug}`, existingLink.destinationUrl, {
-        ex: LINK_ALIAS_TTL_SECONDS,
-      }),
-      redis.set(`link:${existingLink.domain.hostString}:${updatedLink.slug}`, updatedLink.destinationUrl, {
-        ex: 60 * 60 * 24,
-      }),
-    ]);
+    const updatedLink = await rotateLinkPrefix({
+      linkId: existingLink.id,
+      mode: requestedMode === "long" ? "LONG" : "SHORT",
+      requestedSlug,
+    });
+
+    if (!updatedLink) {
+      return noStoreJson({ error: "Link not found." }, { status: 404 });
+    }
+
+    return noStoreJson(updatedLink);
   } catch {
-    // Cache refresh is best-effort.
+    return noStoreJson({ error: requestedSlug ? "That slug is already taken or reserved." : "Could not generate an available slug." }, { status: 409 });
   }
-
-  return noStoreJson(updatedLink);
-}
-
-function updateLinkSlugWithAlias(linkId: string, domainId: string, previousSlug: string, nextSlug: string) {
-  return prisma.$transaction(async (tx) => {
-    await tx.linkSlugAlias.upsert({
-      where: {
-        domainId_slug: {
-          domainId,
-          slug: previousSlug,
-        },
-      },
-      update: {
-        linkId,
-        expiresAt: linkAliasExpiresAt(),
-      },
-      create: {
-        linkId,
-        domainId,
-        slug: previousSlug,
-        expiresAt: linkAliasExpiresAt(),
-      },
-    });
-
-    return tx.link.update({
-      where: { id: linkId },
-      data: { slug: nextSlug },
-      include: {
-        domain: {
-          select: {
-            hostString: true,
-            status: true,
-          },
-        },
-        _count: {
-          select: {
-            clicks: true,
-          },
-        },
-        slugAliases: {
-          where: {
-            expiresAt: {
-              gt: new Date(),
-            },
-          },
-          orderBy: {
-            expiresAt: "desc",
-          },
-          select: {
-            id: true,
-            slug: true,
-            expiresAt: true,
-          },
-        },
-      },
-    });
-  });
 }

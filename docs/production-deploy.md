@@ -6,6 +6,7 @@ This project is prepared for a single VPS using Docker Compose:
 - PostgreSQL 16 in Docker
 - Caddy on public ports `80` and `443`
 - On-demand TLS for every allowed tenant domain
+- Worker container for link auto-rotation, analytics flushing, and expired alias cleanup
 
 ## 1. VPS Requirements
 
@@ -98,7 +99,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production run --rm ap
 Check logs:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production logs -f app caddy
+docker compose -f docker-compose.prod.yml --env-file .env.production logs -f app worker caddy
 ```
 
 ## 6. Verify
@@ -108,6 +109,7 @@ Open:
 ```text
 https://yourplatform.com/admin/login
 https://yourplatform.com/login
+https://yourplatform.com/api/health
 ```
 
 Then:
@@ -119,3 +121,5 @@ Then:
 5. Open `https://rectfairways.com/prefix/index.html`.
 
 If Caddy accepts the domain and the app finds the link, the assigned preset `index.html` renders.
+
+The `worker` service calls `/api/internal/worker` every minute using `INTERNAL_API_SECRET`. It rotates tenant links that are due, flushes queued analytics into PostgreSQL, sends queued form submissions to tenant Discord webhooks, and removes expired old-prefix aliases.

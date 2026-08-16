@@ -41,6 +41,22 @@ services:
     expose:
       - "3000"
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${APP_ENV_FILE:-.env.production}
+    depends_on:
+      - app
+    command:
+      [
+        "node",
+        "-e",
+        "const secret=process.env.INTERNAL_API_SECRET; const origin=process.env.INTERNAL_APP_ORIGIN || 'http://app:3000'; async function run(){try{const res=await fetch(origin + '/api/internal/worker',{method:'POST',headers:{Authorization:'Bearer '+secret}}); console.log(new Date().toISOString(), 'worker', res.status, await res.text());}catch(error){console.error(new Date().toISOString(), 'worker failed', error.message)}} run(); setInterval(run, 60000);",
+      ]
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped

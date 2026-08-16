@@ -54,6 +54,14 @@ type DiscordWebhookSettings = {
   maskedUrl: string | null;
 };
 
+type RotationPolicy = {
+  autoRotationEnabled: boolean;
+  autoRotationMode: "SHORT" | "LONG";
+  autoRotationIntervalHours?: number | null;
+  nextAutoRotationAt?: string | null;
+  lastAutoRotationAt?: string | null;
+};
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -68,6 +76,13 @@ export function UserAssignedPagesPanel() {
   const [message, setMessage] = useState("");
   const [savingPresetId, setSavingPresetId] = useState("");
   const [webhookSettings, setWebhookSettings] = useState<DiscordWebhookSettings>({ enabled: false, maskedUrl: null });
+  const [rotationPolicy, setRotationPolicy] = useState<RotationPolicy>({
+    autoRotationEnabled: false,
+    autoRotationMode: "SHORT",
+    autoRotationIntervalHours: null,
+    nextAutoRotationAt: null,
+    lastAutoRotationAt: null,
+  });
   const [webhookUrl, setWebhookUrl] = useState("");
   const [savingWebhook, setSavingWebhook] = useState(false);
   const [rotatingId, setRotatingId] = useState("");
@@ -78,12 +93,13 @@ export function UserAssignedPagesPanel() {
   const metricByLinkId = useMemo(() => new Map(metrics.map((metric) => [metric.linkId, metric])), [metrics]);
 
   async function refreshPanelData() {
-    const [linksResponse, domainsResponse, presetsResponse, metricsResponse, webhookResponse] = await Promise.all([
+    const [linksResponse, domainsResponse, presetsResponse, metricsResponse, webhookResponse, rotationResponse] = await Promise.all([
       fetch("/api/user/links", noStoreFetch),
       fetch("/api/user/domains", noStoreFetch),
       fetch("/api/user/page-presets", noStoreFetch),
       fetch("/api/user/analytics/by-link", noStoreFetch),
       fetch("/api/user/settings/discord-webhook", noStoreFetch),
+      fetch("/api/user/rotation-policy", noStoreFetch),
     ]);
 
     if (linksResponse.ok) {
@@ -104,6 +120,10 @@ export function UserAssignedPagesPanel() {
 
     if (webhookResponse.ok) {
       setWebhookSettings((await webhookResponse.json()) as DiscordWebhookSettings);
+    }
+
+    if (rotationResponse.ok) {
+      setRotationPolicy((await rotationResponse.json()) as RotationPolicy);
     }
   }
 
@@ -272,6 +292,34 @@ export function UserAssignedPagesPanel() {
           </CardContent>
         </Card>
 
+        <Card className="border-violet-400/20 bg-violet-500/10">
+          <CardHeader>
+            <CardTitle>Automatic Prefix Rotation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 text-xs font-bold">
+              <span className="rounded-md bg-white/10 px-2 py-1 text-slate-200">
+                {rotationPolicy.autoRotationEnabled ? "Enabled by admin" : "Disabled by admin"}
+              </span>
+              <span className="rounded-md bg-violet-500/15 px-2 py-1 text-violet-200">
+                {rotationPolicy.autoRotationMode === "LONG" ? "Long prefixes" : "Short prefixes"}
+              </span>
+              <span className="rounded-md bg-cyan-500/15 px-2 py-1 text-cyan-200">
+                Every {rotationPolicy.autoRotationIntervalHours ?? "-"} hours
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 text-sm text-slate-300 md:grid-cols-2">
+              <p>Next rotation: {rotationPolicy.nextAutoRotationAt ? new Date(rotationPolicy.nextAutoRotationAt).toLocaleString() : "Not scheduled"}</p>
+              <p>Last rotation: {rotationPolicy.lastAutoRotationAt ? new Date(rotationPolicy.lastAutoRotationAt).toLocaleString() : "Never"}</p>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">
+              Old prefixes remain available during the grace window shown on each managed URL.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-4">
         <Card className="border-cyan-400/20 bg-cyan-500/10">
           <CardHeader>
             <CardTitle>Admin Page Presets</CardTitle>

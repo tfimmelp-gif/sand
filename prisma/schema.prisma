@@ -24,6 +24,11 @@ enum RedirectSource {
   PRESET_CONTROLLED
 }
 
+enum AutoRotationMode {
+  SHORT
+  LONG
+}
+
 model User {
   id               String   @id @default(uuid())
   email            String   @unique
@@ -33,6 +38,11 @@ model User {
   assignedDomainExpiresAt DateTime?
   tenantAccessActive Boolean @default(true)
   tenantAccessExpiresAt DateTime?
+  autoRotationEnabled Boolean @default(false)
+  autoRotationMode AutoRotationMode @default(SHORT)
+  autoRotationIntervalHours Int?
+  nextAutoRotationAt DateTime?
+  lastAutoRotationAt DateTime?
   discordWebhookUrl String?
   assignedDomain   Domain?  @relation("AssignedDomain", fields: [assignedDomainId], references: [id])
   createdAt        DateTime @default(now())
@@ -41,6 +51,7 @@ model User {
 
   @@index([assignedDomainExpiresAt])
   @@index([tenantAccessExpiresAt])
+  @@index([autoRotationEnabled, nextAutoRotationAt])
 }
 
 model Domain {
@@ -72,9 +83,12 @@ model Link {
   clicks         ClickLog[]
   activities     PageActivity[]
   slugAliases    LinkSlugAlias[]
+  metricSummary  LinkMetricSummary?
 
   @@unique([domainId, slug])
   @@index([expiresAt])
+  @@index([userId, status])
+  @@index([domainId, status])
 }
 
 model LinkSlugAlias {
@@ -90,6 +104,22 @@ model LinkSlugAlias {
   @@unique([domainId, slug])
   @@index([linkId])
   @@index([expiresAt])
+  @@index([domainId, slug, expiresAt])
+}
+
+model LinkMetricSummary {
+  linkId          String   @id
+  link            Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  clicks          Int      @default(0)
+  pageViews       Int      @default(0)
+  formSubmissions Int      @default(0)
+  botVisits       Int      @default(0)
+  highRiskEvents  Int      @default(0)
+  uniqueIps       Int      @default(0)
+  lastVisitAt     DateTime?
+  updatedAt       DateTime @updatedAt
+
+  @@index([lastVisitAt])
 }
 
 model LinkPagePreset {
@@ -134,6 +164,8 @@ model ClickLog {
   riskScore Int      @default(0)
 
   @@index([linkId, timestamp])
+  @@index([linkId, isBot, timestamp])
+  @@index([linkId, riskScore, timestamp])
   @@index([isBot, timestamp])
 }
 
@@ -157,6 +189,9 @@ model PageActivity {
   timestamp DateTime @default(now())
 
   @@index([linkId, timestamp])
+  @@index([linkId, eventType, timestamp])
+  @@index([linkId, isBot, timestamp])
+  @@index([linkId, riskScore, timestamp])
   @@index([eventType, timestamp])
   @@index([isBot, timestamp])
 }

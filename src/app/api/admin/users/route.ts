@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 
 import { authOptions } from "@/lib/auth";
 import { parseExpiryInput } from "@/lib/expiration";
+import { isValidRotationInterval, nextRotationDate } from "@/lib/link-rotation";
 import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
 
@@ -25,6 +26,11 @@ export async function GET() {
       assignedDomainExpiresAt: true,
       tenantAccessActive: true,
       tenantAccessExpiresAt: true,
+      autoRotationEnabled: true,
+      autoRotationMode: true,
+      autoRotationIntervalHours: true,
+      nextAutoRotationAt: true,
+      lastAutoRotationAt: true,
       assignedDomain: {
         select: {
           id: true,
@@ -51,7 +57,18 @@ export async function PATCH(req: Request) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const { userId, assignedDomainId, assignedDomainExpiresAt, assignedDomainExpiryBundle, tenantAccessActive, tenantAccessExpiresAt, tenantAccessBundle } = (await req.json()) as {
+  const {
+    userId,
+    assignedDomainId,
+    assignedDomainExpiresAt,
+    assignedDomainExpiryBundle,
+    tenantAccessActive,
+    tenantAccessExpiresAt,
+    tenantAccessBundle,
+    autoRotationEnabled,
+    autoRotationMode,
+    autoRotationIntervalHours,
+  } = (await req.json()) as {
     userId?: string;
     assignedDomainId?: string | null;
     assignedDomainExpiresAt?: string | null;
@@ -59,6 +76,9 @@ export async function PATCH(req: Request) {
     tenantAccessActive?: boolean;
     tenantAccessExpiresAt?: string | null;
     tenantAccessBundle?: string | null;
+    autoRotationEnabled?: boolean;
+    autoRotationMode?: "SHORT" | "LONG";
+    autoRotationIntervalHours?: number | null;
   };
 
   if (!userId) {
@@ -80,13 +100,20 @@ export async function PATCH(req: Request) {
   }
 
   const data: {
-    assignedDomainId: string | null;
+    assignedDomainId?: string | null;
     assignedDomainExpiresAt?: Date | null;
     tenantAccessActive?: boolean;
     tenantAccessExpiresAt?: Date | null;
-  } = {
-    assignedDomainId: assignedDomainId || null,
-  };
+    autoRotationEnabled?: boolean;
+    autoRotationMode?: "SHORT" | "LONG";
+    autoRotationIntervalHours?: number | null;
+    nextAutoRotationAt?: Date | null;
+    lastAutoRotationAt?: Date | null;
+  } = {};
+
+  if (assignedDomainId !== undefined) {
+    data.assignedDomainId = assignedDomainId || null;
+  }
 
   if (!assignedDomainId || assignedDomainExpiresAt !== undefined || assignedDomainExpiryBundle !== undefined) {
     data.assignedDomainExpiresAt = assignedDomainId
@@ -102,6 +129,19 @@ export async function PATCH(req: Request) {
     data.tenantAccessExpiresAt = parseExpiryInput({ expiresAt: tenantAccessExpiresAt, expiryBundle: tenantAccessBundle });
   }
 
+  if (typeof autoRotationEnabled === "boolean") {
+    const intervalHours = Number(autoRotationIntervalHours ?? 24);
+    if (autoRotationEnabled && !isValidRotationInterval(intervalHours)) {
+      return NextResponse.json({ error: "Choose a valid auto-rotation interval." }, { status: 400 });
+    }
+
+    data.autoRotationEnabled = autoRotationEnabled;
+    data.autoRotationMode = autoRotationMode === "LONG" ? "LONG" : "SHORT";
+    data.autoRotationIntervalHours = autoRotationEnabled ? intervalHours : null;
+    data.nextAutoRotationAt = autoRotationEnabled ? nextRotationDate(intervalHours) : null;
+    data.lastAutoRotationAt = autoRotationEnabled ? undefined : null;
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
     data,
@@ -113,6 +153,11 @@ export async function PATCH(req: Request) {
       assignedDomainExpiresAt: true,
       tenantAccessActive: true,
       tenantAccessExpiresAt: true,
+      autoRotationEnabled: true,
+      autoRotationMode: true,
+      autoRotationIntervalHours: true,
+      nextAutoRotationAt: true,
+      lastAutoRotationAt: true,
       assignedDomain: {
         select: {
           id: true,

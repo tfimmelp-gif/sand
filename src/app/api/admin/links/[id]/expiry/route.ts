@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { parseExpiryInput } from "@/lib/expiration";
+import { primeLinkMetadataCache } from "@/lib/link-cache";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = {
@@ -34,6 +35,18 @@ export async function PATCH(req: Request, context: RouteContext) {
         _count: { select: { clicks: true } },
       },
     });
+
+    await primeLinkMetadataCache({
+      linkId: link.id,
+      host: link.domain.hostString,
+      slug: link.slug,
+      canonicalSlug: link.slug,
+      destinationUrl: link.destinationUrl,
+      indexPagePreset: link.indexPagePreset,
+      redirectSource: link.redirectSource,
+      expiresAt: link.expiresAt?.toISOString() ?? null,
+      status: link.status,
+    }).catch(() => undefined);
 
     return NextResponse.json(link);
   } catch {
