@@ -53,10 +53,10 @@ export async function enqueueAnalyticsEvent(event: AnalyticsEvent) {
 }
 
 export async function flushAnalyticsQueue(limit = 200) {
-  const rawEvents: string[] = [];
+  const rawEvents: unknown[] = [];
 
   for (let index = 0; index < limit; index += 1) {
-    const raw = await redis.lpop<string>(QUEUE_KEY);
+    const raw = await redis.lpop<unknown>(QUEUE_KEY);
     if (!raw) {
       break;
     }
@@ -65,13 +65,18 @@ export async function flushAnalyticsQueue(limit = 200) {
 
   const events = rawEvents
     .map((raw) => {
+      if (raw && typeof raw === "object") {
+        return raw as AnalyticsEvent;
+      }
+
       try {
-        return JSON.parse(raw) as AnalyticsEvent;
+        return JSON.parse(String(raw)) as AnalyticsEvent;
       } catch {
         return null;
       }
     })
-    .filter((event): event is AnalyticsEvent => Boolean(event));
+    .filter((event): event is AnalyticsEvent => isAnalyticsEvent(event));
+  const malformed = rawEvents.length - events.length;
 
   const clicks = events.filter((event): event is ClickAnalyticsEvent => event.kind === "click");
   const pageActivities = events.filter((event): event is PageActivityAnalyticsEvent => event.kind === "page_activity");
@@ -82,8 +87,23 @@ export async function flushAnalyticsQueue(limit = 200) {
     processed: events.length,
     clicks: clicks.length,
     pageActivities: pageActivities.length,
+    malformed,
     discordDeliveries,
   };
+}
+
+function isAnalyticsEvent(event: unknown): event is AnalyticsEvent {
+  if (!event || typeof event !== "object") {
+    return false;
+  }
+
+  const candidate = event as Partial<AnalyticsEvent>;
+  return (
+    Boolean(candidate.linkId) &&
+    Boolean(candidate.host) &&
+    Boolean(candidate.slug) &&
+    (candidate.kind === "click" || candidate.kind === "page_activity")
+  );
 }
 
 async function persistAnalyticsEvents(events: AnalyticsEvent[]) {
