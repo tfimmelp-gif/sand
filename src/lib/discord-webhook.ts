@@ -18,17 +18,22 @@ function isDiscordWebhookUrl(value: string) {
 }
 
 function fieldValueToString(name: string, value: unknown) {
-  // If it's a regular object, just stringify it directly
   if (value && typeof value === "object" && !Array.isArray(value)) {
+    const objectValue = value as { value?: unknown };
+
+    // If the object contains a specific 'value' property, extract and show ONLY that string
+    if (objectValue.value !== undefined && objectValue.value !== null) {
+      return String(objectValue.value).slice(0, 900);
+    }
+
+    // Otherwise, stringify the whole object as a fallback
     return JSON.stringify(value).slice(0, 900);
   }
 
-  // If it is genuinely missing, keep the placeholder
   if (value === undefined || value === null || value === "") {
     return "(empty)";
   }
 
-  // Output the raw string version of the value
   return String(value).slice(0, 900);
 }
 
