@@ -335,6 +335,13 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     return response;
   }
 
+  if (url.search && !url.pathname.includes(".")) {
+    const fallbackHome = await renderIndexPage(url, host, "");
+    if (fallbackHome?.linkSlug) {
+      return cleanPrefixRedirect(url, fallbackHome.linkSlug);
+    }
+  }
+
   const lastKnownSlug = rememberedSlug(request, host);
   if (lastKnownSlug && lastKnownSlug !== slug) {
     return cleanPrefixRedirect(url, lastKnownSlug);
