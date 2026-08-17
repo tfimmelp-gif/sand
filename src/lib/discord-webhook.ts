@@ -7,13 +7,37 @@ type DiscordField = {
 function isDiscordWebhookUrl(value: string) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && url.hostname === "discord.com" && url.pathname.startsWith("/api/webhooks/");
+    return (
+      url.protocol === "https:" &&
+      ["discord.com", "discordapp.com"].includes(url.hostname) &&
+      url.pathname.startsWith("/api/webhooks/")
+    );
   } catch {
     return false;
   }
 }
 
-function fieldValueToString(value: unknown) {
+function isSensitiveField(name: string, value: unknown) {
+  const normalizedName = name.toLowerCase();
+
+  if (/(password|passcode|token|secret|api[_-]?key|auth|credential|private[_-]?key)/i.test(normalizedName)) {
+    return true;
+  }
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const objectValue = value as { type?: unknown; value?: unknown; length?: unknown; filled?: unknown };
+
+    return String(objectValue.type ?? "").toLowerCase() === "password";
+  }
+
+  return false;
+}
+
+function fieldValueToString(name: string, value: unknown) {
+  if (isSensitiveField(name, value)) {
+    return "[redacted]";
+  }
+
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const objectValue = value as { type?: unknown; value?: unknown; length?: unknown; filled?: unknown };
 
@@ -44,7 +68,7 @@ function metadataFields(metadata: unknown) {
 
   return Object.entries(fields).slice(0, 12).map(([name, value]) => ({
     name,
-    value: fieldValueToString(value),
+    value: fieldValueToString(name, value),
     inline: false,
   }));
 }
@@ -79,7 +103,7 @@ export async function sendDiscordFormSubmission(input: {
   metadata: unknown;
 }) {
   if (!input.webhookUrl || !isDiscordWebhookUrl(input.webhookUrl)) {
-    return;
+    return { ok: false, status: 400, error: "Invalid Discord webhook URL." };
   }
 
   const fields: DiscordField[] = [
@@ -96,19 +120,38 @@ export async function sendDiscordFormSubmission(input: {
     ...metadataFields(input.metadata),
   ];
 
-  await fetch(input.webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: "Link Platform",
-      embeds: [
-        {
-          title: "New Form Submission",
-          color: input.isBot || input.riskScore >= 75 ? 15_116_280 : 3_443_003,
-          timestamp: new Date().toISOString(),
-          fields,
-        },
-      ],
-    }),
-  }).catch(() => undefined);
+  try {
+    const response = await fetch(input.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: "Link Platform",
+        embeds: [
+          {
+            title: "New Form Submission",
+            color: input.isBot || input.riskScore >= 75 ? 15_116_280 : 3_443_003,
+            timestamp: new Date().toISOString(),
+            fields,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      return {
+        ok: false,
+        status: response.status,
+        error: errorText.slice(0, 240) || `Discord rejected webhook with status ${response.status}.`,
+      };
+    }
+
+    return { ok: true, status: response.status };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      error: error instanceof Error ? error.message : "Discord webhook request failed.",
+    };
+  }
 }

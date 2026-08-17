@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No Discord webhook is saved." }, { status: 400 });
   }
 
-  await sendDiscordFormSubmission({
+  const delivery = await sendDiscordFormSubmission({
     webhookUrl: user.discordWebhookUrl,
     host: user.assignedDomain?.hostString ?? "tenant-domain",
     slug: "test-message",
@@ -110,6 +110,13 @@ export async function POST(req: Request) {
       },
     },
   });
+
+  if (!delivery.ok) {
+    return NextResponse.json(
+      { error: delivery.error ?? "Discord webhook test failed.", status: delivery.status },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

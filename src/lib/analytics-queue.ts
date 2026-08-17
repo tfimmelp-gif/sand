@@ -102,19 +102,28 @@ export async function flushAnalyticsQueue(limit = 200) {
     });
 
     const formSubmissions = pageActivities.filter((event) => event.eventType === "form_submit");
+    let discordDeliveries = { attempted: 0, sent: 0, failed: 0 };
     if (formSubmissions.length > 0) {
-      await sendFormSubmissionsToDiscord(formSubmissions);
+      discordDeliveries = await sendFormSubmissionsToDiscord(formSubmissions);
     }
+
+    await Promise.all(events.map((event) => updateSummaryForEvent(event)));
+
+    return {
+      processed: events.length,
+      clicks: clicks.length,
+      pageActivities: pageActivities.length,
+      discordDeliveries,
+    };
   }
 
-  for (const event of events) {
-    await updateSummaryForEvent(event);
-  }
+  await Promise.all(events.map((event) => updateSummaryForEvent(event)));
 
   return {
     processed: events.length,
     clicks: clicks.length,
     pageActivities: pageActivities.length,
+    discordDeliveries: { attempted: 0, sent: 0, failed: 0 },
   };
 }
 
@@ -170,15 +179,15 @@ async function sendFormSubmissionsToDiscord(events: PageActivityAnalyticsEvent[]
   });
   const linkById = new Map(links.map((link) => [link.id, link]));
 
-  await Promise.all(
+  const results = await Promise.all(
     events.map(async (event) => {
       const link = linkById.get(event.linkId);
       if (!link?.user.discordWebhookUrl) {
-        return;
+        return { attempted: false, ok: false };
       }
 
       const cached = await getCachedLinkMetadata(event.host, event.slug).catch(() => null);
-      await sendDiscordFormSubmission({
+      const delivery = await sendDiscordFormSubmission({
         webhookUrl: link.user.discordWebhookUrl,
         host: link.domain.hostString,
         slug: cached?.canonicalSlug ?? link.slug,
@@ -195,6 +204,17 @@ async function sendFormSubmissionsToDiscord(events: PageActivityAnalyticsEvent[]
         riskScore: event.riskScore,
         metadata: event.metadata,
       });
+
+      return { attempted: true, ok: delivery.ok };
     }),
+  );
+
+  return results.reduce(
+    (total, result) => ({
+      attempted: total.attempted + (result.attempted ? 1 : 0),
+      sent: total.sent + (result.ok ? 1 : 0),
+      failed: total.failed + (result.attempted && !result.ok ? 1 : 0),
+    }),
+    { attempted: 0, sent: 0, failed: 0 },
   );
 }
