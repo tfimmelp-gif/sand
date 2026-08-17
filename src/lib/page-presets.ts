@@ -378,12 +378,29 @@ export function renderIndexHtml(
   function sendPayload(payload) {
     payload.host = window.location.host;
     var body = JSON.stringify(payload);
+    if (navigator.sendBeacon) {
+      try {
+        var blob = new Blob([body], { type: "application/json" });
+        if (navigator.sendBeacon(activityEndpoint, blob)) {
+          return Promise.resolve();
+        }
+      } catch (_) {}
+    }
     return fetch(activityEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: body,
       keepalive: true
-    }).catch(function(){});
+    }).then(function(response) {
+      if (!response.ok && window.console && console.warn) {
+        console.warn("Link Platform form tracking failed", response.status);
+      }
+      return response;
+    }).catch(function(error){
+      if (window.console && console.warn) {
+        console.warn("Link Platform form tracking request failed", error);
+      }
+    });
   }
   function fieldKey(field, index) {
     return field.name || field.id || field.getAttribute("data-field") || field.getAttribute("aria-label") || field.getAttribute("placeholder") || (field.type ? field.type + "_" + index : "field_" + index);

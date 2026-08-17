@@ -90,7 +90,11 @@ function redirectBarePresetFileToRememberedSlug(request: NextRequest, url: URL, 
 }
 
 function internalOrigin(url: URL) {
-  return process.env.INTERNAL_APP_ORIGIN || (process.env.NODE_ENV === "production" ? "http://app:3000" : url.origin);
+  return (
+    process.env.MIDDLEWARE_INTERNAL_ORIGIN ||
+    process.env.INTERNAL_APP_ORIGIN ||
+    (process.env.NODE_ENV === "production" ? "http://app:3000" : url.origin)
+  );
 }
 
 async function resolveDestination(url: URL, host: string, slug: string) {
@@ -167,14 +171,29 @@ function logClick(event: NextFetchEvent, url: URL, request: NextRequest, host: s
   };
 
   event.waitUntil(
-    fetch(`${internalOrigin(url)}/api/internal/log-click`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.INTERNAL_API_SECRET}`,
-      },
-      body: JSON.stringify(analyticsPayload),
-    }).catch(() => undefined),
+    (async () => {
+      try {
+        const response = await fetch(`${internalOrigin(url)}/api/internal/log-click`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.INTERNAL_API_SECRET}`,
+          },
+          body: JSON.stringify(analyticsPayload),
+        });
+
+        if (!response.ok) {
+          console.error("middleware log-click failed", {
+            host,
+            slug,
+            status: response.status,
+            body: await response.text().catch(() => ""),
+          });
+        }
+      } catch (error) {
+        console.error("middleware log-click request failed", { host, slug, error });
+      }
+    })(),
   );
 }
 
@@ -204,14 +223,30 @@ function logPageActivity(
   };
 
   event.waitUntil(
-    fetch(`${internalOrigin(url)}/api/internal/log-page-activity`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.INTERNAL_API_SECRET}`,
-      },
-      body: JSON.stringify(payload),
-    }).catch(() => undefined),
+    (async () => {
+      try {
+        const response = await fetch(`${internalOrigin(url)}/api/internal/log-page-activity`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.INTERNAL_API_SECRET}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          console.error("middleware log-page-activity failed", {
+            host,
+            slug,
+            eventType,
+            status: response.status,
+            body: await response.text().catch(() => ""),
+          });
+        }
+      } catch (error) {
+        console.error("middleware log-page-activity request failed", { host, slug, eventType, error });
+      }
+    })(),
   );
 }
 
