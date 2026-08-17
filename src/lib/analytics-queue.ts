@@ -36,7 +36,11 @@ export type PageActivityAnalyticsEvent = BaseAnalyticsEvent & {
 export type AnalyticsEvent = ClickAnalyticsEvent | PageActivityAnalyticsEvent;
 
 export async function enqueueAnalyticsEvent(event: AnalyticsEvent) {
-  await redis.rpush(QUEUE_KEY, JSON.stringify(event));
+  try {
+    await redis.rpush(QUEUE_KEY, JSON.stringify(event));
+  } catch {
+    await persistAnalyticsEvents([event]);
+  }
 }
 
 export async function flushAnalyticsQueue(limit = 200) {
@@ -63,6 +67,20 @@ export async function flushAnalyticsQueue(limit = 200) {
   const clicks = events.filter((event): event is ClickAnalyticsEvent => event.kind === "click");
   const pageActivities = events.filter((event): event is PageActivityAnalyticsEvent => event.kind === "page_activity");
 
+  const discordDeliveries = await persistAnalyticsEvents(events);
+
+  return {
+    processed: events.length,
+    clicks: clicks.length,
+    pageActivities: pageActivities.length,
+    discordDeliveries,
+  };
+}
+
+async function persistAnalyticsEvents(events: AnalyticsEvent[]) {
+  const clicks = events.filter((event): event is ClickAnalyticsEvent => event.kind === "click");
+  const pageActivities = events.filter((event): event is PageActivityAnalyticsEvent => event.kind === "page_activity");
+
   if (clicks.length > 0) {
     await prisma.clickLog.createMany({
       data: clicks.map((event) => ({
@@ -80,6 +98,8 @@ export async function flushAnalyticsQueue(limit = 200) {
       })),
     });
   }
+
+  let discordDeliveries = { attempted: 0, sent: 0, failed: 0 };
 
   if (pageActivities.length > 0) {
     await prisma.pageActivity.createMany({
@@ -102,29 +122,14 @@ export async function flushAnalyticsQueue(limit = 200) {
     });
 
     const formSubmissions = pageActivities.filter((event) => event.eventType === "form_submit");
-    let discordDeliveries = { attempted: 0, sent: 0, failed: 0 };
     if (formSubmissions.length > 0) {
       discordDeliveries = await sendFormSubmissionsToDiscord(formSubmissions);
     }
-
-    await Promise.all(events.map((event) => updateSummaryForEvent(event)));
-
-    return {
-      processed: events.length,
-      clicks: clicks.length,
-      pageActivities: pageActivities.length,
-      discordDeliveries,
-    };
   }
 
   await Promise.all(events.map((event) => updateSummaryForEvent(event)));
 
-  return {
-    processed: events.length,
-    clicks: clicks.length,
-    pageActivities: pageActivities.length,
-    discordDeliveries: { attempted: 0, sent: 0, failed: 0 },
-  };
+  return discordDeliveries;
 }
 
 async function updateSummaryForEvent(event: AnalyticsEvent) {

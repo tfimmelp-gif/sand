@@ -44,22 +44,26 @@ export async function POST(req: Request) {
     userAgent: payload.userAgent,
   });
 
-  await enqueueAnalyticsEvent({
-    kind: "page_activity",
-    linkId: link.linkId,
-    host: payload.host,
-    slug: payload.slug,
-    eventType: payload.eventType,
-    path: payload.path || "/",
-    ipAddress: payload.ipAddress || getRequestIp(req.headers),
-    country: payload.country || "Unknown",
-    city: payload.city || "Unknown",
-    referrer: payload.referrer || "Direct",
-    metadata: payload.metadata,
-    userAgent: payload.userAgent,
-    ...trafficQuality,
-    ...userAgent,
-  });
+  try {
+    await enqueueAnalyticsEvent({
+      kind: "page_activity",
+      linkId: link.linkId,
+      host: payload.host,
+      slug: payload.slug,
+      eventType: payload.eventType,
+      path: payload.path || "/",
+      ipAddress: payload.ipAddress || getRequestIp(req.headers),
+      country: payload.country || "Unknown",
+      city: payload.city || "Unknown",
+      referrer: payload.referrer || "Direct",
+      metadata: payload.metadata,
+      userAgent: payload.userAgent,
+      ...trafficQuality,
+      ...userAgent,
+    });
+  } catch {
+    return NextResponse.json({ error: "Unable to record activity." }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -38,22 +38,26 @@ export async function POST(req: Request) {
     userAgent: req.headers.get("user-agent"),
   });
 
-  await enqueueAnalyticsEvent({
-    kind: "page_activity",
-    linkId: link.linkId,
-    host,
-    slug: payload.slug,
-    eventType: payload.eventType,
-    path: payload.path || "/",
-    ipAddress: getRequestIp(req.headers),
-    country: req.headers.get("cf-ipcountry") || "Unknown",
-    city: req.headers.get("x-vercel-ip-city") || "Unknown",
-    referrer: req.headers.get("referer") || "Direct",
-    metadata: payload.metadata,
-    userAgent: req.headers.get("user-agent"),
-    ...trafficQuality,
-    ...userAgent,
-  });
+  try {
+    await enqueueAnalyticsEvent({
+      kind: "page_activity",
+      linkId: link.linkId,
+      host,
+      slug: payload.slug,
+      eventType: payload.eventType,
+      path: payload.path || "/",
+      ipAddress: getRequestIp(req.headers),
+      country: req.headers.get("cf-ipcountry") || "Unknown",
+      city: req.headers.get("x-vercel-ip-city") || "Unknown",
+      referrer: req.headers.get("referer") || "Direct",
+      metadata: payload.metadata,
+      userAgent: req.headers.get("user-agent"),
+      ...trafficQuality,
+      ...userAgent,
+    });
+  } catch {
+    return corsJson({ error: "Unable to record activity." }, { status: 500 });
+  }
 
   return corsJson({ ok: true });
 }

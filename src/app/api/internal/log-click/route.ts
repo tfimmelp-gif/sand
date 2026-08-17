@@ -41,19 +41,23 @@ export async function POST(req: Request) {
     userAgent: payload.userAgent,
   });
 
-  await enqueueAnalyticsEvent({
-    kind: "click",
-    linkId: link.linkId,
-    host: payload.host,
-    slug: payload.slug,
-    country: payload.country || "Unknown",
-    city: payload.city || "Unknown",
-    referrer: payload.referrer || "Direct",
-    ipAddress: payload.ipAddress || getRequestIp(req.headers),
-    userAgent: payload.userAgent,
-    ...trafficQuality,
-    ...userAgent,
-  });
+  try {
+    await enqueueAnalyticsEvent({
+      kind: "click",
+      linkId: link.linkId,
+      host: payload.host,
+      slug: payload.slug,
+      country: payload.country || "Unknown",
+      city: payload.city || "Unknown",
+      referrer: payload.referrer || "Direct",
+      ipAddress: payload.ipAddress || getRequestIp(req.headers),
+      userAgent: payload.userAgent,
+      ...trafficQuality,
+      ...userAgent,
+    });
+  } catch {
+    return NextResponse.json({ error: "Unable to record click." }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
