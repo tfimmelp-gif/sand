@@ -288,10 +288,13 @@ export function renderIndexHtml(
     values.slug,
   );
 
-  if (!rendered.toLowerCase().includes("</body>")) {
-    return rendered;
-  }
-
+  const routeHelper = `<script>
+(function(){
+  window.__LINK_PLATFORM_HOME__ = ${JSON.stringify(`/${values.slug}/index.html`)};
+  window.__LINK_PLATFORM_DASHBOARD__ = ${JSON.stringify(`/${values.slug}/dashboard.html`)};
+  window.__LINK_PLATFORM_DESTINATION__ = ${JSON.stringify(destinationUrl)};
+})();
+</script>`;
   const tracker = `<script>
 (function(){
   var slug = ${JSON.stringify(values.slug)};
@@ -393,29 +396,72 @@ data[key] = field.value;
 })();
 </script>`;
 
-  return rendered.replace(/<\/body>/i, `${tracker}</body>`);
+  const renderedWithHelper = rendered.toLowerCase().includes("</head>")
+    ? rendered.replace(/<\/head>/i, `${routeHelper}</head>`)
+    : `${routeHelper}${rendered}`;
+
+  if (!renderedWithHelper.toLowerCase().includes("</body>")) {
+    return `${tracker}${renderedWithHelper}`;
+  }
+
+  return renderedWithHelper.replace(/<\/body>/i, `${tracker}</body>`);
 }
 
 function rewritePresetAssetUrls(html: string, slug: string) {
   const safeSlug = slug.replace(/"/g, "");
-  const shouldRewrite = (value: string) =>
+  const prefixPath = `/${safeSlug}`;
+  const internalFiles = ["index.html", "dashboard.html"];
+  const passthroughSchemes = /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i;
+  const shouldRewriteRootPath = (value: string) =>
     value.startsWith("/") &&
     !value.startsWith("//") &&
     !value.startsWith("/api/") &&
     !value.startsWith("/_next/") &&
-    !value.startsWith(`/${safeSlug}/`);
+    !value.startsWith(`${prefixPath}/`);
+
+  const rewriteUrlValue = (value: string) => {
+    if (!value || passthroughSchemes.test(value)) {
+      return value;
+    }
+
+    const trimmedValue = value.trimStart();
+    const whitespace = value.slice(0, value.length - trimmedValue.length);
+    const internalFile = internalFiles.find((file) => trimmedValue.toLowerCase().startsWith(file));
+
+    if (internalFile) {
+      return `${whitespace}./${trimmedValue}`;
+    }
+
+    if (shouldRewriteRootPath(value)) {
+      return `${prefixPath}${value}`;
+    }
+
+    return value;
+  };
+
+  const rewriteMetaRefreshValue = (value: string) =>
+    value.replace(/(\burl\s*=\s*)([^;"']+)/gi, (_match, prefix: string, urlValue: string) => {
+      return `${prefix}${rewriteUrlValue(urlValue.trim())}`;
+    });
 
   return html
-    .replace(/\b(src|href|poster|action)=("|')([^"']+)\2/gi, (match, attr: string, quote: string, value: string) => {
-      if (!shouldRewrite(value)) {
-        return match;
-      }
-
-      return `${attr}=${quote}/${safeSlug}${value}${quote}`;
+    .replace(/\b(src|href|poster|action)=("|')([^"']+)\2/gi, (_match, attr: string, quote: string, value: string) => {
+      return `${attr}=${quote}${rewriteUrlValue(value)}${quote}`;
+    })
+    .replace(/\bcontent=("|')([^"']*\burl\s*=\s*[^"']+)\1/gi, (_match, quote: string, value: string) => {
+      return `content=${quote}${rewriteMetaRefreshValue(value)}${quote}`;
     })
     .replace(/url\((["']?)(\/(?!\/|api\/|_next\/)[^)"']+)\1\)/gi, (_match, quote: string, value: string) => {
-      return `url(${quote}/${safeSlug}${value}${quote})`;
+      if (value.startsWith(`${prefixPath}/`)) {
+        return `url(${quote}${value}${quote})`;
+      }
+
+      return `url(${quote}${prefixPath}${value}${quote})`;
     })
+    .replace(
+      /(["'`])((?:\.\/)?(?:index|dashboard)\.html(?:[?#][^"'`]*)?)\1/gi,
+      (_match, quote: string, value: string) => `${quote}${rewriteUrlValue(value.replace(/^\.\//, ""))}${quote}`,
+    )
     .replace(/(["'`])\/(?!\/|api\/|_next\/)([^"'`<>]+?\.[a-zA-Z0-9]{1,8}[^"'`]*)\1/g, (match, quote: string, value: string) => {
       if (value.startsWith(`${safeSlug}/`)) {
         return match;
