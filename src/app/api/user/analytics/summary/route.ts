@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import { flushAnalyticsQueue } from "@/lib/analytics-queue";
 import { authOptions } from "@/lib/auth";
 import { noStoreJson } from "@/lib/no-store";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +32,8 @@ export async function GET() {
   if (!access.allowed) {
     return NextResponse.json({ error: access.reason }, { status: 403 });
   }
+
+  await flushAnalyticsQueue(500).catch(() => null);
 
   const [links, summaries, clicks, activities] = await Promise.all([
     prisma.link.findMany({

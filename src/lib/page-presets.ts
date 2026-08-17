@@ -342,6 +342,12 @@ export function renderIndexHtml(
     window.location.assign = function(url) { return originalAssign(normalizePlatformUrl(String(url))); };
     window.location.replace = function(url) { return originalReplace(normalizePlatformUrl(String(url))); };
   } catch (_) {}
+  try {
+    var originalOpen = window.open.bind(window);
+    window.open = function(url, target, features) {
+      return originalOpen(url ? normalizePlatformUrl(String(url)) : url, target, features);
+    };
+  } catch (_) {}
   document.addEventListener("click", function(event) {
     var target = event.target && event.target.closest ? event.target.closest("a[href]") : null;
     if (target) normalizeAttribute(target, "href");

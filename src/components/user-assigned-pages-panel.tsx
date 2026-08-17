@@ -85,6 +85,9 @@ export function UserAssignedPagesPanel() {
   });
   const [webhookUrl, setWebhookUrl] = useState("");
   const [savingWebhook, setSavingWebhook] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
   const [rotatingId, setRotatingId] = useState("");
   const [customPrefixes, setCustomPrefixes] = useState<Record<string, string>>({});
 
@@ -267,6 +270,29 @@ export function UserAssignedPagesPanel() {
     setSavingWebhook(false);
   }
 
+  async function changePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingPassword(true);
+    setMessage("");
+
+    const response = await fetch("/api/user/settings/password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    if (response.ok) {
+      setCurrentPassword("");
+      setNewPassword("");
+      setMessage("Password updated.");
+    } else {
+      const payload = await response.json().catch(() => ({ error: "Unable to update password." }));
+      setMessage(payload.error ?? "Unable to update password.");
+    }
+
+    setSavingPassword(false);
+  }
+
   return (
     <div className="space-y-4">
       <section className="grid gap-4 xl:grid-cols-2">
@@ -363,6 +389,43 @@ export function UserAssignedPagesPanel() {
           <p className="mt-3 text-xs text-slate-400">
             Status: {webhookSettings.enabled ? `Enabled (${webhookSettings.maskedUrl})` : "Disabled"}. Form submissions are stored first, then sent to Discord from the server.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Change Password</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={changePassword} className="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+            <label className="text-sm font-medium text-slate-300">
+              Current password
+              <input
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                type="password"
+                autoComplete="current-password"
+                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-300"
+                required
+              />
+            </label>
+            <label className="text-sm font-medium text-slate-300">
+              New password
+              <input
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-300"
+                required
+              />
+            </label>
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500" disabled={savingPassword}>
+              {savingPassword ? "Saving..." : "Update Password"}
+            </Button>
+          </form>
+          <p className="mt-3 text-xs text-slate-400">Use this after first login to replace the admin-issued temporary password.</p>
         </CardContent>
       </Card>
 
