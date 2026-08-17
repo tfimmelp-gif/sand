@@ -290,9 +290,79 @@ export function renderIndexHtml(
 
   const routeHelper = `<script>
 (function(){
-  window.__LINK_PLATFORM_HOME__ = ${JSON.stringify(`/${values.slug}/index.html`)};
-  window.__LINK_PLATFORM_DASHBOARD__ = ${JSON.stringify(`/${values.slug}/dashboard.html`)};
+  var homePath = ${JSON.stringify(`/${values.slug}/index.html`)};
+  var dashboardPath = ${JSON.stringify(`/${values.slug}/dashboard.html`)};
+  window.__LINK_PLATFORM_HOME__ = homePath;
+  window.__LINK_PLATFORM_DASHBOARD__ = dashboardPath;
   window.__LINK_PLATFORM_DESTINATION__ = ${JSON.stringify(destinationUrl)};
+  function normalizePlatformUrl(raw) {
+    if (!raw || typeof raw !== "string") return raw;
+    var value = raw.trim();
+    var origin = window.location.origin;
+    var homePattern = /^(?:\\.\\/)?index\\.html([?#].*)?$/i;
+    var dashboardPattern = /^(?:\\.\\/)?dashboard\\.html([?#].*)?$/i;
+    if (homePattern.test(value)) return value.replace(homePattern, homePath + "$1");
+    if (dashboardPattern.test(value)) return value.replace(dashboardPattern, dashboardPath + "$1");
+    if (value.indexOf(origin + "/index.html") === 0) return origin + homePath + value.slice((origin + "/index.html").length);
+    if (value.indexOf(origin + "/dashboard.html") === 0) return origin + dashboardPath + value.slice((origin + "/dashboard.html").length);
+    if (value.indexOf("/index.html") === 0) return homePath + value.slice("/index.html".length);
+    if (value.indexOf("/dashboard.html") === 0) return dashboardPath + value.slice("/dashboard.html".length);
+    return raw;
+  }
+  window.__LINK_PLATFORM_NORMALIZE_URL__ = normalizePlatformUrl;
+  function normalizeAttribute(element, attr) {
+    if (!element || !element.getAttribute) return;
+    var current = element.getAttribute(attr);
+    var normalized = normalizePlatformUrl(current);
+    if (normalized && normalized !== current) element.setAttribute(attr, normalized);
+  }
+  function normalizeMetaRefresh(meta) {
+    if (!meta || !meta.getAttribute) return;
+    var httpEquiv = meta.getAttribute("http-equiv") || "";
+    if (httpEquiv.toLowerCase() !== "refresh") return;
+    var content = meta.getAttribute("content") || "";
+    var normalized = content.replace(/(url\\s*=\\s*)([^;]+)/i, function(match, prefix, target) {
+      return prefix + normalizePlatformUrl(String(target).trim());
+    });
+    if (normalized !== content) meta.setAttribute("content", normalized);
+  }
+  function normalizeDocumentRoutes(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    Array.prototype.forEach.call(scope.querySelectorAll("a[href], link[href]"), function(element) {
+      normalizeAttribute(element, "href");
+    });
+    Array.prototype.forEach.call(scope.querySelectorAll("form[action]"), function(element) {
+      normalizeAttribute(element, "action");
+    });
+    Array.prototype.forEach.call(scope.querySelectorAll("meta[http-equiv]"), normalizeMetaRefresh);
+  }
+  try {
+    var originalAssign = window.location.assign.bind(window.location);
+    var originalReplace = window.location.replace.bind(window.location);
+    window.location.assign = function(url) { return originalAssign(normalizePlatformUrl(String(url))); };
+    window.location.replace = function(url) { return originalReplace(normalizePlatformUrl(String(url))); };
+  } catch (_) {}
+  document.addEventListener("click", function(event) {
+    var target = event.target && event.target.closest ? event.target.closest("a[href]") : null;
+    if (target) normalizeAttribute(target, "href");
+  }, true);
+  document.addEventListener("submit", function(event) {
+    if (event.target) normalizeAttribute(event.target, "action");
+  }, true);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function(){ normalizeDocumentRoutes(document); });
+  } else {
+    normalizeDocumentRoutes(document);
+  }
+  if (window.MutationObserver) {
+    new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        Array.prototype.forEach.call(mutation.addedNodes || [], function(node) {
+          if (node && node.nodeType === 1) normalizeDocumentRoutes(node);
+        });
+      });
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();
 </script>`;
   const tracker = `<script>

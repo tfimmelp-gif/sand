@@ -62,6 +62,33 @@ function rootPresetFilePath(pathname: string) {
   return cleanPath;
 }
 
+function lastSlugCookieName(host: string) {
+  return `lp_last_slug_${host.replace(/[^a-z0-9]/gi, "_").slice(0, 80)}`;
+}
+
+function rememberedSlug(request: NextRequest, host: string) {
+  const value = request.cookies.get(lastSlugCookieName(host))?.value;
+
+  if (!value || value.includes("/") || value.includes("..")) {
+    return null;
+  }
+
+  return value;
+}
+
+function redirectBarePresetFileToRememberedSlug(request: NextRequest, url: URL, host: string, filePath: string) {
+  const inferredFromReferer = inferPageFileFromReferer(request, host, url.pathname);
+  const inferredSlug = inferredFromReferer?.slug ?? rememberedSlug(request, host);
+
+  if (!inferredSlug) {
+    return null;
+  }
+
+  const redirectUrl = new URL(url);
+  redirectUrl.pathname = `/${inferredSlug}/${filePath}`;
+  return NextResponse.redirect(redirectUrl, 302);
+}
+
 function internalOrigin(url: URL) {
   return process.env.INTERNAL_APP_ORIGIN || url.origin;
 }
@@ -187,6 +214,9 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const host = normalizeHost(request.headers.get("host") || "");
   const appDomain = normalizeHost(process.env.NEXT_PUBLIC_APP_DOMAIN || "");
   const barePresetFile = rootPresetFilePath(url.pathname);
+  const barePresetFileRedirect = barePresetFile
+    ? redirectBarePresetFileToRememberedSlug(request, url, host, barePresetFile)
+    : null;
   const pageFile =
     pathnameToPageFile(url.pathname) ??
     inferPageFileFromReferer(request, host, url.pathname) ??
@@ -218,6 +248,10 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.next();
   }
 
+  if (barePresetFileRedirect) {
+    return barePresetFileRedirect;
+  }
+
   const rateLimitKey = `traffic:${host}:${slug || pageFile?.slug || "root"}:${ipAddress}`;
   const rateLimit = checkRateLimit(rateLimitKey, 90, 60_000);
 
@@ -241,12 +275,23 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
         logPageActivity(event, url, request, host, file.linkSlug, "page_view");
       }
 
-      return new NextResponse(file.body, {
+      const response = new NextResponse(file.body, {
         headers: {
           "Content-Type": file.contentType,
           "Cache-Control": "no-store",
         },
       });
+
+      if (file.contentType.toLowerCase().includes("text/html") && file.linkSlug) {
+        response.cookies.set(lastSlugCookieName(host), file.linkSlug, {
+          httpOnly: true,
+          maxAge: 60 * 60,
+          path: "/",
+          sameSite: "lax",
+        });
+      }
+
+      return response;
     }
 
     return new NextResponse("File not found", { status: 404 });
@@ -261,12 +306,21 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   if (html) {
     logClick(event, url, request, host, slug);
     logPageActivity(event, url, request, host, slug, "page_view");
-    return new NextResponse(html.body, {
+    const response = new NextResponse(html.body, {
       headers: {
         "Content-Type": html.contentType,
         "Cache-Control": "no-store",
       },
     });
+
+    response.cookies.set(lastSlugCookieName(host), html.linkSlug || slug, {
+      httpOnly: true,
+      maxAge: 60 * 60,
+      path: "/",
+      sameSite: "lax",
+    });
+
+    return response;
   }
 
   const resolvedDestination = await resolveDestination(url, host, slug);
