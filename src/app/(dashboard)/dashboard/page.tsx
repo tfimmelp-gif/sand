@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAssignedPagesPanel } from "@/components/user-assigned-pages-panel";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
+import { assignedDomainAccessWhere, getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
 import { qualityLabel } from "@/lib/traffic-quality";
 
 export const dynamic = "force-dynamic";
@@ -102,7 +102,7 @@ export default async function DashboardPage() {
 
   const [
     linkCount,
-    domainCount,
+    assignedDomainCount,
     clickCount,
     pageViewCount,
     formSubmissionCount,
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
     recentFormSubmissions,
   ] = await Promise.all([
     prisma.link.count({ where: { userId: session.user.id, ...linkAccessWhere() } }),
-    prisma.domain.count({ where: { OR: [{ userId: session.user.id }, { isGlobal: true }] } }),
+    prisma.user.count({ where: { id: session.user.id, ...assignedDomainAccessWhere() } }),
     prisma.clickLog.count({ where: { link: { userId: session.user.id, ...linkAccessWhere() } } }),
     prisma.pageActivity.count({ where: { eventType: "page_view", link: { userId: session.user.id, ...linkAccessWhere() } } }),
     prisma.pageActivity.count({ where: { eventType: "form_submit", link: { userId: session.user.id, ...linkAccessWhere() } } }),
@@ -193,10 +193,10 @@ export default async function DashboardPage() {
         </Card>
         <Card className="border-violet-400/20 bg-violet-500/10">
           <CardHeader>
-            <CardTitle>Available Domains</CardTitle>
+            <CardTitle>Assigned Domains</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold">{domainCount}</p>
+            <p className="text-4xl font-bold">{assignedDomainCount}</p>
           </CardContent>
         </Card>
         <Card className="border-emerald-400/20 bg-emerald-500/10">
