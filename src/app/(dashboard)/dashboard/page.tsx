@@ -238,7 +238,7 @@ export default async function DashboardPage() {
                     {link.domain.hostString}/{link.slug}
                   </p>
                   <p className="max-w-xl truncate font-mono text-xs text-slate-500">
-                    Index page: {link.domain.hostString}/{link.slug}/index.html
+                    Homepage: {link.domain.hostString}/{link.slug}
                   </p>
                   <p className="max-w-xl truncate font-mono text-xs text-slate-500">
                     Dashboard page: {link.domain.hostString}/{link.slug}/dashboard.html

@@ -387,7 +387,7 @@ export function UserAssignedPagesPanel() {
                     {host}/{link.slug}
                   </p>
                   <div className="mt-2 grid gap-1 font-mono text-xs text-slate-400">
-                    <span className="truncate">index.html: {host}/{link.slug}/index.html</span>
+                    <span className="truncate">Homepage: {host}/{link.slug}</span>
                     <span className="truncate">dashboard.html: {host}/{link.slug}/dashboard.html</span>
                     <span className="truncate">destination: {link.destinationUrl}</span>
                   </div>

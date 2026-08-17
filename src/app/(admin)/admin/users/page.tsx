@@ -354,7 +354,7 @@ export default function SuperAdminUsersPage() {
       setManagedLinks((currentLinks) =>
         currentLinks.map((link) => (link.id === updatedLink.id ? updatedLink : link)),
       );
-      setLinkMessage("Link page preset updated. Refresh the public link to see the selected index.html.");
+      setLinkMessage("Link page preset updated. Refresh the public link to see the selected homepage.");
       setSavingLinkPresetId("");
       return;
     }
@@ -953,7 +953,7 @@ export default function SuperAdminUsersPage() {
                       </div>
                       <p className="truncate font-mono text-sm font-semibold text-blue-700">{host}/{link.slug}</p>
                       <div className="grid gap-0.5 font-mono text-[11px] text-slate-500">
-                        <span className="truncate">index.html: {host}/{link.slug}/index.html</span>
+                        <span className="truncate">Homepage: {host}/{link.slug}</span>
                         <span className="truncate">dashboard.html: {host}/{link.slug}/dashboard.html</span>
                         <span className="truncate">admin URL: {link.destinationUrl}</span>
                       </div>

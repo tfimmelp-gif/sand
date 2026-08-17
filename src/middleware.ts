@@ -85,7 +85,7 @@ function redirectBarePresetFileToRememberedSlug(request: NextRequest, url: URL, 
   }
 
   const redirectUrl = new URL(url);
-  redirectUrl.pathname = `/${inferredSlug}/${filePath}`;
+  redirectUrl.pathname = filePath.toLowerCase() === "index.html" ? `/${inferredSlug}` : `/${inferredSlug}/${filePath}`;
   return NextResponse.redirect(redirectUrl, 302);
 }
 
@@ -250,6 +250,12 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
 
   if (barePresetFileRedirect) {
     return barePresetFileRedirect;
+  }
+
+  if (pageFile?.filePath.toLowerCase() === "index.html") {
+    const cleanUrl = new URL(url);
+    cleanUrl.pathname = `/${pageFile.slug}`;
+    return NextResponse.redirect(cleanUrl, 302);
   }
 
   const rateLimitKey = `traffic:${host}:${slug || pageFile?.slug || "root"}:${ipAddress}`;

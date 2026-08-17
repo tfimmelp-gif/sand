@@ -290,7 +290,7 @@ export function renderIndexHtml(
 
   const routeHelper = `<script>
 (function(){
-  var homePath = ${JSON.stringify(`/${values.slug}/index.html`)};
+  var homePath = ${JSON.stringify(`/${values.slug}`)};
   var dashboardPath = ${JSON.stringify(`/${values.slug}/dashboard.html`)};
   window.__LINK_PLATFORM_HOME__ = homePath;
   window.__LINK_PLATFORM_DASHBOARD__ = dashboardPath;
@@ -498,8 +498,20 @@ function rewritePresetAssetUrls(html: string, slug: string) {
     const whitespace = value.slice(0, value.length - trimmedValue.length);
     const internalFile = internalFiles.find((file) => trimmedValue.toLowerCase().startsWith(file));
 
-    if (internalFile) {
-      return `${whitespace}./${trimmedValue}`;
+    if (internalFile === "index.html") {
+      return `${whitespace}${prefixPath}${trimmedValue.slice("index.html".length)}`;
+    }
+
+    if (internalFile === "dashboard.html") {
+      return `${whitespace}${prefixPath}/${trimmedValue}`;
+    }
+
+    if (trimmedValue.toLowerCase().startsWith("/index.html")) {
+      return `${whitespace}${prefixPath}${trimmedValue.slice("/index.html".length)}`;
+    }
+
+    if (trimmedValue.toLowerCase().startsWith("/dashboard.html")) {
+      return `${whitespace}${prefixPath}${trimmedValue}`;
     }
 
     if (shouldRewriteRootPath(value)) {

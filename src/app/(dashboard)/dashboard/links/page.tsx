@@ -163,7 +163,7 @@ export default function UserWorkspaceLinksPage() {
     if (response.ok) {
       setSlug("");
       setDestination("");
-      setMessage("Link deployed. The index.html page is ready.");
+      setMessage("Link deployed. The homepage is ready.");
       await refreshLinks();
       return;
     }
@@ -359,7 +359,7 @@ export default function UserWorkspaceLinksPage() {
                 />
               </label>
               <label className="block text-sm font-medium text-slate-700">
-                index.html Page Preset
+                Homepage Page Preset
                 <select
                   value={selectedPreset}
                   onChange={(event) => setSelectedPreset(event.target.value)}
@@ -394,7 +394,7 @@ export default function UserWorkspaceLinksPage() {
                       {link.domain?.hostString}/{link.slug}
                     </a>
                     <p className="max-w-xl truncate font-mono text-xs text-slate-500">
-                      Index page: {link.domain?.hostString}/{link.slug}/index.html
+                      Homepage: {link.domain?.hostString}/{link.slug}
                     </p>
                     <p className="max-w-xl truncate font-mono text-xs text-slate-500">
                       Dashboard page: {link.domain?.hostString}/{link.slug}/dashboard.html
