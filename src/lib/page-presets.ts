@@ -380,7 +380,7 @@ export function renderIndexHtml(
     var body = JSON.stringify(payload);
     if (navigator.sendBeacon) {
       try {
-        var blob = new Blob([body], { type: "application/json" });
+        var blob = new Blob([body], { type: "text/plain;charset=UTF-8" });
         if (navigator.sendBeacon(activityEndpoint, blob)) {
           return Promise.resolve();
         }

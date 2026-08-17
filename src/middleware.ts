@@ -189,6 +189,14 @@ function logClick(event: NextFetchEvent, url: URL, request: NextRequest, host: s
             status: response.status,
             body: await response.text().catch(() => ""),
           });
+          return;
+        }
+
+        const result = (await response.json().catch(() => null)) as { recorded?: boolean; reason?: string } | null;
+        if (result && result.recorded === false) {
+          console.warn("middleware log-click not recorded", { host, slug, reason: result.reason || "unknown" });
+        } else if (process.env.ANALYTICS_DEBUG === "true") {
+          console.info("middleware log-click recorded", { host, slug });
         }
       } catch (error) {
         console.error("middleware log-click request failed", { host, slug, error });
@@ -242,6 +250,19 @@ function logPageActivity(
             status: response.status,
             body: await response.text().catch(() => ""),
           });
+          return;
+        }
+
+        const result = (await response.json().catch(() => null)) as { recorded?: boolean; reason?: string } | null;
+        if (result && result.recorded === false) {
+          console.warn("middleware log-page-activity not recorded", {
+            host,
+            slug,
+            eventType,
+            reason: result.reason || "unknown",
+          });
+        } else if (process.env.ANALYTICS_DEBUG === "true") {
+          console.info("middleware log-page-activity recorded", { host, slug, eventType });
         }
       } catch (error) {
         console.error("middleware log-page-activity request failed", { host, slug, eventType, error });

@@ -67,5 +67,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unable to record activity." }, { status: 500 });
   }
 
+  if (process.env.ANALYTICS_DEBUG === "true") {
+    console.info("log-page-activity recorded", {
+      host: payload.host,
+      slug: payload.slug,
+      eventType: payload.eventType,
+      linkId: link.linkId,
+    });
+  }
+
   return NextResponse.json({ ok: true, recorded: true });
 }

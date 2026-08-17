@@ -61,6 +61,10 @@ export async function POST(req: Request) {
     return corsJson({ error: "Unable to record activity." }, { status: 500 });
   }
 
+  if (process.env.ANALYTICS_DEBUG === "true") {
+    console.info("page-activity recorded", { host, slug: payload.slug, eventType: payload.eventType, linkId: link.linkId });
+  }
+
   return corsJson({ ok: true, recorded: true });
 }
 

@@ -61,5 +61,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unable to record click." }, { status: 500 });
   }
 
+  if (process.env.ANALYTICS_DEBUG === "true") {
+    console.info("log-click recorded", { host: payload.host, slug: payload.slug, linkId: link.linkId });
+  }
+
   return NextResponse.json({ ok: true, recorded: true });
 }
