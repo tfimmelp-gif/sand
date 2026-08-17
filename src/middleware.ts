@@ -28,7 +28,7 @@ function pathnameToPageFile(pathname: string) {
 function inferPageFileFromReferer(request: NextRequest, host: string, pathname: string) {
   const cleanPath = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
 
-  if (!cleanPath || cleanPath.includes("..")) {
+  if (!cleanPath || cleanPath.includes("..") || !cleanPath.includes(".")) {
     return null;
   }
 

@@ -94,6 +94,7 @@ export async function GET() {
   const lastVisitByLink = new Map(recentVisits.map((row) => [row.linkId, row._max.timestamp]));
   const pageViewsByLink = new Map<string, number>();
   const formsByLink = new Map<string, number>();
+  const uniqueIpsByLink = new Map<string, Set<string>>();
 
   for (const row of pageGroups) {
     if (row.eventType === "page_view") {
@@ -101,6 +102,26 @@ export async function GET() {
     }
     if (row.eventType === "form_submit") {
       formsByLink.set(row.linkId, row._count._all);
+    }
+  }
+
+  if (linkIds.length > 0) {
+    const [clickIps, pageIps] = await Promise.all([
+      prisma.clickLog.findMany({
+        where: { linkId: { in: linkIds } },
+        select: { linkId: true, ipAddress: true },
+      }),
+      prisma.pageActivity.findMany({
+        where: { linkId: { in: linkIds } },
+        select: { linkId: true, ipAddress: true },
+      }),
+    ]);
+
+    for (const row of [...clickIps, ...pageIps]) {
+      if (!uniqueIpsByLink.has(row.linkId)) {
+        uniqueIpsByLink.set(row.linkId, new Set());
+      }
+      uniqueIpsByLink.get(row.linkId)?.add(row.ipAddress || "Unknown");
     }
   }
 
@@ -115,7 +136,7 @@ export async function GET() {
     return {
       linkId: link.id,
       clicks: Math.max(link.metricSummary?.clicks ?? 0, rawClicks),
-      uniqueVisitors: link.metricSummary?.uniqueIps ?? 0,
+      uniqueVisitors: Math.max(link.metricSummary?.uniqueIps ?? 0, uniqueIpsByLink.get(link.id)?.size ?? 0),
       pageViews: Math.max(link.metricSummary?.pageViews ?? 0, rawPageViews),
       formSubmissions: Math.max(link.metricSummary?.formSubmissions ?? 0, rawForms),
       botVisits: Math.max(link.metricSummary?.botVisits ?? 0, rawBotVisits),

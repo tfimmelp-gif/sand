@@ -6,6 +6,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAssignedPagesPanel } from "@/components/user-assigned-pages-panel";
+import { flushAnalyticsQueue } from "@/lib/analytics-queue";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assignedDomainAccessWhere, getTenantAccess, linkAccessWhere } from "@/lib/tenant-access";
@@ -99,6 +100,8 @@ export default async function DashboardPage() {
   if (!access.allowed) {
     redirect("/login");
   }
+
+  await flushAnalyticsQueue(500).catch(() => null);
 
   const [
     linkCount,
