@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   const link = await resolvePublicLinkMetadata(host, payload.slug);
 
   if (!link) {
-    return corsJson({ ok: true });
+    console.warn("page-activity unresolved link", { host, slug: payload.slug, eventType: payload.eventType });
+    return corsJson({ ok: true, recorded: false, reason: "link_not_found" });
   }
 
   const userAgent = parseUserAgent(req.headers.get("user-agent") ?? "");
@@ -55,11 +56,12 @@ export async function POST(req: Request) {
       ...trafficQuality,
       ...userAgent,
     });
-  } catch {
+  } catch (error) {
+    console.error("page-activity record failed", error);
     return corsJson({ error: "Unable to record activity." }, { status: 500 });
   }
 
-  return corsJson({ ok: true });
+  return corsJson({ ok: true, recorded: true });
 }
 
 export async function OPTIONS() {

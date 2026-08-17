@@ -32,7 +32,8 @@ export async function POST(req: Request) {
   const link = await resolvePublicLinkMetadata(payload.host, payload.slug);
 
   if (!link) {
-    return NextResponse.json({ ok: true });
+    console.warn("log-page-activity unresolved link", { host: payload.host, slug: payload.slug, eventType: payload.eventType });
+    return NextResponse.json({ ok: true, recorded: false, reason: "link_not_found" });
   }
 
   const userAgent = parseUserAgent(payload.userAgent ?? "");
@@ -61,9 +62,10 @@ export async function POST(req: Request) {
       ...trafficQuality,
       ...userAgent,
     });
-  } catch {
+  } catch (error) {
+    console.error("log-page-activity record failed", error);
     return NextResponse.json({ error: "Unable to record activity." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, recorded: true });
 }

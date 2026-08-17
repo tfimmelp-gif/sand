@@ -90,7 +90,7 @@ function redirectBarePresetFileToRememberedSlug(request: NextRequest, url: URL, 
 }
 
 function internalOrigin(url: URL) {
-  return process.env.INTERNAL_APP_ORIGIN || url.origin;
+  return process.env.INTERNAL_APP_ORIGIN || (process.env.NODE_ENV === "production" ? "http://app:3000" : url.origin);
 }
 
 async function resolveDestination(url: URL, host: string, slug: string) {

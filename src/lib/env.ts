@@ -7,6 +7,7 @@ export function productionEnvReport() {
     "NEXTAUTH_URL",
     "NEXT_PUBLIC_APP_DOMAIN",
     "INTERNAL_API_SECRET",
+    "INTERNAL_APP_ORIGIN",
   ];
 
   return required.map((key) => ({
