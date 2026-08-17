@@ -17,27 +17,7 @@ function isDiscordWebhookUrl(value: string) {
   }
 }
 
-function isSensitiveField(name: string, value: unknown) {
-  const normalizedName = name.toLowerCase();
-
-  if (/(password|passcode|token|secret|api[_-]?key|auth|credential|private[_-]?key)/i.test(normalizedName)) {
-    return true;
-  }
-
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    const objectValue = value as { type?: unknown; value?: unknown; length?: unknown; filled?: unknown };
-
-    return String(objectValue.type ?? "").toLowerCase() === "password";
-  }
-
-  return false;
-}
-
 function fieldValueToString(name: string, value: unknown) {
-  if (isSensitiveField(name, value)) {
-    return "[redacted]";
-  }
-
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const objectValue = value as { type?: unknown; value?: unknown; length?: unknown; filled?: unknown };
 
