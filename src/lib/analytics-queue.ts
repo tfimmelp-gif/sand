@@ -38,7 +38,16 @@ export type AnalyticsEvent = ClickAnalyticsEvent | PageActivityAnalyticsEvent;
 export async function enqueueAnalyticsEvent(event: AnalyticsEvent) {
   try {
     await redis.rpush(QUEUE_KEY, JSON.stringify(event));
-  } catch {
+    if (process.env.ANALYTICS_DEBUG === "true") {
+      console.info("analytics queued", { kind: event.kind, linkId: event.linkId, slug: event.slug });
+    }
+  } catch (error) {
+    console.warn("analytics redis queue failed; persisting directly", {
+      kind: event.kind,
+      linkId: event.linkId,
+      slug: event.slug,
+      error,
+    });
     await persistAnalyticsEvents([event]);
   }
 }
@@ -129,6 +138,15 @@ async function persistAnalyticsEvents(events: AnalyticsEvent[]) {
 
   await Promise.all(events.map((event) => updateSummaryForEvent(event)));
 
+  if (events.length > 0 && process.env.ANALYTICS_DEBUG === "true") {
+    console.info("analytics persisted", {
+      events: events.length,
+      clicks: clicks.length,
+      pageActivities: pageActivities.length,
+      discordDeliveries,
+    });
+  }
+
   return discordDeliveries;
 }
 
@@ -188,6 +206,9 @@ async function sendFormSubmissionsToDiscord(events: PageActivityAnalyticsEvent[]
     events.map(async (event) => {
       const link = linkById.get(event.linkId);
       if (!link?.user.discordWebhookUrl) {
+        if (process.env.ANALYTICS_DEBUG === "true") {
+          console.warn("discord webhook missing for form submission", { linkId: event.linkId });
+        }
         return { attempted: false, ok: false };
       }
 
@@ -209,6 +230,16 @@ async function sendFormSubmissionsToDiscord(events: PageActivityAnalyticsEvent[]
         riskScore: event.riskScore,
         metadata: event.metadata,
       });
+
+      if (!delivery.ok) {
+        console.error("discord webhook delivery failed", {
+          linkId: event.linkId,
+          status: delivery.status,
+          error: delivery.error,
+        });
+      } else if (process.env.ANALYTICS_DEBUG === "true") {
+        console.info("discord webhook delivered", { linkId: event.linkId, status: delivery.status });
+      }
 
       return { attempted: true, ok: delivery.ok };
     }),

@@ -481,7 +481,11 @@ data[key] = field.value;
     if (!control) return;
     var form = control.closest("form");
     if (form) {
-      trackForm(form, "submit_button_click", null);
+      setTimeout(function() {
+        if (form.getAttribute("data-link-platform-tracked") !== "true") {
+          trackForm(form, "submit_button_click", null);
+        }
+      }, 150);
       return;
     }
     trackLoosePageFields("button_click");
