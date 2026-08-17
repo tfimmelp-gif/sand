@@ -144,6 +144,12 @@ async function renderIndexPage(url: URL, host: string, slug: string, filePath = 
   };
 }
 
+function cleanPrefixRedirect(url: URL, slug: string) {
+  const redirectUrl = new URL(url);
+  redirectUrl.pathname = `/${slug}`;
+  return NextResponse.redirect(redirectUrl, 302);
+}
+
 function logClick(event: NextFetchEvent, url: URL, request: NextRequest, host: string, slug: string) {
   if (!process.env.INTERNAL_API_SECRET) {
     return;
@@ -327,6 +333,11 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     });
 
     return response;
+  }
+
+  const lastKnownSlug = rememberedSlug(request, host);
+  if (lastKnownSlug && lastKnownSlug !== slug) {
+    return cleanPrefixRedirect(url, lastKnownSlug);
   }
 
   const resolvedDestination = await resolveDestination(url, host, slug);
