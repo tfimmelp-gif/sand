@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthenticatorSettingsPanel } from "@/components/authenticator-settings-panel";
 import { formatExpiry } from "@/lib/expiration";
 
 type AdminUser = {
@@ -162,6 +163,10 @@ export default function SuperAdminUsersPage() {
   const [dnsStatuses, setDnsStatuses] = useState<Record<string, DomainDnsStatus>>({});
   const [checkingDnsDomainId, setCheckingDnsDomainId] = useState("");
   const activeGlobalDomains = useMemo(() => globalDomains.filter((domain) => domain.status === "ACTIVE"), [globalDomains]);
+  const failingDnsStatuses = useMemo(
+    () => Object.values(dnsStatuses).filter((status) => status.error || !status.pointsToServer),
+    [dnsStatuses],
+  );
   const selectedTenant = useMemo(() => users.find((user) => user.id === linkTenantId), [linkTenantId, users]);
   const selectedTenantAssignedDomain = useMemo(
     () =>
@@ -780,11 +785,14 @@ export default function SuperAdminUsersPage() {
         <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#tenant-access">
           Tenant Access
         </a>
+        <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#security">
+          Security
+        </a>
         <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#managed-links">
           Managed URLs
         </a>
         <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#presets">
-          Presets
+          File Manager
         </a>
         <a className="rounded-md px-3 py-2 hover:bg-white/10" href="#domain-pool">
           Domains
@@ -808,6 +816,15 @@ export default function SuperAdminUsersPage() {
           <p className="mt-1 max-w-2xl text-sm">Provision tenants, manage branded domains, assign links, and edit hosted preset folders from one control surface.</p>
         </div>
       </div>
+
+      <Card id="security">
+        <CardHeader className="bg-indigo-500/10">
+          <CardTitle>Admin Security</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AuthenticatorSettingsPanel />
+        </CardContent>
+      </Card>
 
       <Card id="tenant-access">
         <CardHeader className="bg-sky-500/10">
@@ -1142,7 +1159,7 @@ export default function SuperAdminUsersPage() {
                 <path d="M8 17h5" />
               </svg>
             </span>
-            index.html Preset Contents
+            Preset File Manager
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1193,7 +1210,7 @@ export default function SuperAdminUsersPage() {
                 />
               </label>
               <label className="block text-sm font-medium text-slate-700">
-                File
+                File to edit
                 <select
                   value={editingFilePath}
                   onChange={(event) => setEditingFilePath(event.target.value)}
@@ -1269,9 +1286,14 @@ export default function SuperAdminUsersPage() {
                 <p className="mt-1 text-xs text-slate-500">Upload a new ZIP package to replace this file.</p>
               </div>
             )}
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-bold uppercase text-slate-500">Package files</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+            <div className="dashboard-subpanel p-3 shadow-none">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold uppercase text-slate-500">Uploaded folder files</p>
+                <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">
+                  {(editingPreset?.files.length ?? 0) + 1} files
+                </span>
+              </div>
+              <div className="mt-2 flex max-h-28 flex-wrap gap-2 overflow-y-auto pr-1">
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">index.html</span>
                 {(editingPreset?.files ?? []).map((file) => (
                   <span key={file.filePath} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
@@ -1324,9 +1346,40 @@ export default function SuperAdminUsersPage() {
           </form>
           {domainMessage ? <p className="mt-4 text-sm font-medium text-slate-600">{domainMessage}</p> : null}
 
-          <div className="mt-5 divide-y divide-slate-100">
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="dashboard-subpanel p-3 shadow-none">
+              <p className="text-xs font-bold uppercase text-cyan-300">Domain Health</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">
+                {Object.keys(dnsStatuses).length}/{globalDomains.length}
+              </p>
+              <p className="text-xs text-slate-500">Checked domains</p>
+            </div>
+            <div className="dashboard-subpanel p-3 shadow-none">
+              <p className="text-xs font-bold uppercase text-emerald-300">Passing</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">
+                {Object.values(dnsStatuses).filter((status) => status.pointsToServer).length}
+              </p>
+              <p className="text-xs text-slate-500">Pointing to this platform</p>
+            </div>
+            <div className="dashboard-subpanel p-3 shadow-none">
+              <p className="text-xs font-bold uppercase text-red-300">Failing</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{failingDnsStatuses.length}</p>
+              <p className="text-xs text-slate-500">Need DNS attention</p>
+            </div>
+          </div>
+
+          {failingDnsStatuses.length > 0 ? (
+            <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <p className="font-bold">Failing domains</p>
+              <p className="mt-1">
+                {failingDnsStatuses.map((status) => `${status.domain}: ${status.error || "not pointing to platform"}`).join(" / ")}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="mt-5 grid gap-3">
             {globalDomains.map((domain) => (
-              <div key={domain.id} className="grid gap-4 py-4 lg:grid-cols-[1.2fr_1fr_auto] lg:items-start">
+              <div key={domain.id} className="dashboard-row grid gap-3 p-3 xl:grid-cols-[1.2fr_1.1fr_auto] xl:items-center">
                 <div>
                   <p className="font-semibold text-slate-950">{domain.hostString}</p>
                   <p className="text-sm text-slate-500">
@@ -1339,18 +1392,19 @@ export default function SuperAdminUsersPage() {
                   ) : null}
                 </div>
 
-                <div className="dashboard-subpanel p-3 text-xs">
-                  <p className="font-bold uppercase text-cyan-200">DNS required</p>
-                  <p className="mt-2">
-                    Root domain: add an <span className="font-mono font-bold">A</span> record to your production server IP.
-                  </p>
-                  <p className="mt-1">
-                    Subdomain: add <span className="font-mono font-bold">CNAME</span> to platform host, or an{" "}
-                    <span className="font-mono font-bold">A</span> record to server IP.
+                <div className="dashboard-subpanel min-w-0 p-3 text-xs shadow-none">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-bold uppercase text-cyan-200">DNS</p>
+                    <span className="rounded-full bg-cyan-50 px-2 py-0.5 font-bold text-cyan-700">
+                      A or CNAME
+                    </span>
+                  </div>
+                  <p className="mt-2 truncate text-slate-500">
+                    Root: A to server IP. Subdomain: CNAME to platform host or A to server IP.
                   </p>
                   {dnsStatuses[domain.id] ? (
                     <div className="mt-3 space-y-1">
-                      <p className={dnsStatuses[domain.id].pointsToServer ? "font-bold text-emerald-300" : "font-bold text-amber-300"}>
+                      <p className={dnsStatuses[domain.id].pointsToServer ? "font-bold text-emerald-300" : "font-bold text-red-300"}>
                         {dnsStatuses[domain.id].error
                           ? dnsStatuses[domain.id].error
                           : dnsStatuses[domain.id].pointsToServer
@@ -1359,9 +1413,9 @@ export default function SuperAdminUsersPage() {
                               ? "DNS resolves, but not to the configured platform target."
                               : "DNS does not resolve yet."}
                       </p>
-                      <p className="font-mono">A: {dnsStatuses[domain.id].aRecords.join(", ") || "none"}</p>
-                      <p className="font-mono">CNAME: {dnsStatuses[domain.id].cnameRecords.join(", ") || "none"}</p>
-                      <p className="font-mono">
+                      <p className="truncate font-mono">A: {dnsStatuses[domain.id].aRecords.join(", ") || "none"}</p>
+                      <p className="truncate font-mono">CNAME: {dnsStatuses[domain.id].cnameRecords.join(", ") || "none"}</p>
+                      <p className="truncate font-mono">
                         Expected: {dnsStatuses[domain.id].expectedA ?? dnsStatuses[domain.id].expectedCname ?? "set PUBLIC_SERVER_IP"}
                       </p>
                     </div>
@@ -1409,18 +1463,18 @@ export default function SuperAdminUsersPage() {
           <div className="grid gap-4">
             {users.map((user) => (
               <article key={user.id} className="dashboard-row p-4">
-                <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[0.85fr_1fr_1fr_1fr_1.05fr]">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="truncate font-semibold text-slate-950">{user.email}</p>
-                      <p className="mt-1 text-xs font-semibold uppercase text-slate-500">{user.role}</p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <span className="rounded-md bg-blue-50 px-2 py-2 font-semibold text-blue-700">{user._count?.links ?? 0} links</span>
-                      <span className="rounded-md bg-slate-50 px-2 py-2 font-semibold text-slate-600">{user._count?.domains ?? 0} domains</span>
-                      <span className="rounded-md bg-slate-50 px-2 py-2 font-semibold text-slate-600">{new Date(user.createdAt).toLocaleDateString()}</span>
-                    </div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-950">{user.email}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase text-slate-500">{user.role}</p>
                   </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <span className="rounded-md bg-blue-50 px-2 py-2 font-semibold text-blue-700">{user._count?.links ?? 0} links</span>
+                    <span className="rounded-md bg-slate-50 px-2 py-2 font-semibold text-slate-600">{user._count?.domains ?? 0} domains</span>
+                    <span className="rounded-md bg-slate-50 px-2 py-2 font-semibold text-slate-600">{new Date(user.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
 
                   {user.role === "WORKSPACE_USER" ? (
                     <div className="dashboard-subpanel p-3 shadow-none">

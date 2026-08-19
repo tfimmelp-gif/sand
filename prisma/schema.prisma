@@ -33,6 +33,8 @@ model User {
   id               String   @id @default(uuid())
   email            String   @unique
   passwordHash     String
+  authenticatorSecret String?
+  authenticatorEnabled Boolean @default(false)
   role             Role     @default(WORKSPACE_USER)
   assignedDomainId String?
   assignedDomainExpiresAt DateTime?

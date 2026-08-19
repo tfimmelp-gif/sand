@@ -80,6 +80,28 @@ a {
 .dashboard-row,
 .dashboard-subpanel {
   border-radius: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-row input,
+.dashboard-row select,
+.dashboard-row textarea,
+.dashboard-subpanel input,
+.dashboard-subpanel select,
+.dashboard-subpanel textarea,
+.dashboard-card input,
+.dashboard-card select,
+.dashboard-card textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-row button,
+.dashboard-subpanel button,
+.dashboard-card button {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .dashboard-nav {

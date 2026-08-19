@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 
 import { isExpired } from "@/lib/expiration";
 import { prisma } from "@/lib/prisma";
+import { verifyTotp } from "@/lib/totp";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,6 +14,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         expectedRole: { label: "Expected Role", type: "text" },
+        authenticatorCode: { label: "Authenticator Code", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -34,6 +36,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (credentials.expectedRole && user.role !== credentials.expectedRole) {
+          return null;
+        }
+
+        if (user.authenticatorEnabled && !verifyTotp(credentials.authenticatorCode, user.authenticatorSecret)) {
           return null;
         }
 

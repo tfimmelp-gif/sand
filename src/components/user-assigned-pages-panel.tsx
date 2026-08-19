@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthenticatorSettingsPanel } from "@/components/authenticator-settings-panel";
 
 type Domain = {
   id: string;
@@ -426,6 +427,15 @@ export function UserAssignedPagesPanel() {
             </Button>
           </form>
           <p className="mt-3 text-xs text-slate-400">Use this after first login to replace the admin-issued temporary password.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Authenticator Security</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AuthenticatorSettingsPanel />
         </CardContent>
       </Card>
 

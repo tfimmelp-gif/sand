@@ -16,6 +16,7 @@ export function LoginPanel({ expectedRole, eyebrow, title, subtitle, buttonLabel
   const isAdmin = expectedRole === "SUPER_ADMIN";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [authenticatorCode, setAuthenticatorCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -28,6 +29,7 @@ export function LoginPanel({ expectedRole, eyebrow, title, subtitle, buttonLabel
     const result = await signIn("credentials", {
       email: String(formData.get("email") ?? ""),
       password: String(formData.get("password") ?? ""),
+      authenticatorCode: String(formData.get("authenticatorCode") ?? ""),
       expectedRole,
       redirect: false,
     });
@@ -83,6 +85,19 @@ export function LoginPanel({ expectedRole, eyebrow, title, subtitle, buttonLabel
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+              Authenticator code
+              <input
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                name="authenticatorCode"
+                value={authenticatorCode}
+                onChange={(event) => setAuthenticatorCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="Only if enabled"
               />
             </label>
             {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
