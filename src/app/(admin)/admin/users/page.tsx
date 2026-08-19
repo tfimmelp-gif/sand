@@ -147,6 +147,9 @@ export default function SuperAdminUsersPage() {
   const [savingTenantAccessUserId, setSavingTenantAccessUserId] = useState("");
   const [tenantAccessBundles, setTenantAccessBundles] = useState<Record<string, string>>({});
   const [tenantResetPasswords, setTenantResetPasswords] = useState<Record<string, string>>({});
+  const [tenantResetMessages, setTenantResetMessages] = useState<Record<string, { type: "success" | "error"; text: string }>>({});
+  const [tenantResetReveal, setTenantResetReveal] = useState<Record<string, boolean>>({});
+  const [tenantResetClearAuthenticator, setTenantResetClearAuthenticator] = useState<Record<string, boolean>>({});
   const [resettingTenantPasswordUserId, setResettingTenantPasswordUserId] = useState("");
   const [rotationPolicies, setRotationPolicies] = useState<
     Record<string, { enabled: boolean; mode: "SHORT" | "LONG"; intervalHours: string }>
@@ -652,14 +655,25 @@ export default function SuperAdminUsersPage() {
   async function handleTenantPasswordReset(user: AdminUser) {
     const newPassword = tenantResetPasswords[user.id]?.trim() ?? "";
     setMessage("");
+    setTenantResetMessages((current) => {
+      const next = { ...current };
+      delete next[user.id];
+      return next;
+    });
 
     if (user.role !== "WORKSPACE_USER") {
-      setMessage("Only tenant workspace passwords can be reset here.");
+      setTenantResetMessages((current) => ({
+        ...current,
+        [user.id]: { type: "error", text: "Only tenant workspace passwords can be reset here." },
+      }));
       return;
     }
 
     if (newPassword.length < 8) {
-      setMessage("Enter a new tenant password with at least 8 characters.");
+      setTenantResetMessages((current) => ({
+        ...current,
+        [user.id]: { type: "error", text: "Enter a new tenant password with at least 8 characters." },
+      }));
       return;
     }
 
@@ -671,22 +685,36 @@ export default function SuperAdminUsersPage() {
       body: JSON.stringify({
         userId: user.id,
         newPassword,
+        clearAuthenticator: Boolean(tenantResetClearAuthenticator[user.id]),
       }),
     });
 
     if (response.ok) {
+      const payload = (await response.json().catch(() => ({
+        authenticatorCleared: Boolean(tenantResetClearAuthenticator[user.id]),
+      }))) as { authenticatorCleared?: boolean };
       setTenantResetPasswords((current) => {
         const next = { ...current };
         delete next[user.id];
         return next;
       });
-      setMessage(`Password reset for ${user.email}.`);
+      setTenantResetClearAuthenticator((current) => ({ ...current, [user.id]: false }));
+      setTenantResetMessages((current) => ({
+        ...current,
+        [user.id]: {
+          type: "success",
+          text: `Password reset saved for ${user.email}.${payload.authenticatorCleared ? " Authenticator was cleared." : ""}`,
+        },
+      }));
       setResettingTenantPasswordUserId("");
       return;
     }
 
     const payload = await response.json().catch(() => ({ error: "Unable to reset tenant password." }));
-    setMessage(payload.error ?? "Unable to reset tenant password.");
+    setTenantResetMessages((current) => ({
+      ...current,
+      [user.id]: { type: "error", text: payload.error ?? "Unable to reset tenant password." },
+    }));
     setResettingTenantPasswordUserId("");
   }
 
@@ -1584,20 +1612,59 @@ export default function SuperAdminUsersPage() {
                       </div>
                       <label className="mt-3 block text-sm font-medium text-slate-700">
                         New password
+                        <div className="mt-1 grid grid-cols-[1fr_auto] overflow-hidden rounded-md border border-slate-300 bg-white focus-within:border-orange-400">
+                          <input
+                            type={tenantResetReveal[user.id] ? "text" : "password"}
+                            value={tenantResetPasswords[user.id] ?? ""}
+                            onChange={(event) =>
+                              setTenantResetPasswords((current) => ({
+                                ...current,
+                                [user.id]: event.target.value,
+                              }))
+                            }
+                            className="h-9 min-w-0 border-0 bg-white px-3 text-sm text-slate-950 outline-none"
+                            placeholder="Minimum 8 characters"
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            className="h-9 border-l border-slate-200 px-3 text-xs font-bold text-orange-700 hover:bg-orange-50"
+                            onClick={() =>
+                              setTenantResetReveal((current) => ({
+                                ...current,
+                                [user.id]: !current[user.id],
+                              }))
+                            }
+                          >
+                            {tenantResetReveal[user.id] ? "Hide" : "Reveal"}
+                          </button>
+                        </div>
+                      </label>
+                      <label className="mt-3 flex items-start gap-2 rounded-md bg-orange-50/80 p-2 text-xs font-semibold text-orange-900">
                         <input
-                          type="password"
-                          value={tenantResetPasswords[user.id] ?? ""}
+                          type="checkbox"
+                          checked={Boolean(tenantResetClearAuthenticator[user.id])}
                           onChange={(event) =>
-                            setTenantResetPasswords((current) => ({
+                            setTenantResetClearAuthenticator((current) => ({
                               ...current,
-                              [user.id]: event.target.value,
+                              [user.id]: event.target.checked,
                             }))
                           }
-                          className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-orange-400"
-                          placeholder="Minimum 8 characters"
-                          autoComplete="new-password"
+                          className="mt-0.5 h-4 w-4 rounded border-orange-300"
                         />
+                        Clear Google Authenticator for this tenant
                       </label>
+                      {tenantResetMessages[user.id] ? (
+                        <p
+                          className={
+                            tenantResetMessages[user.id].type === "success"
+                              ? "mt-3 rounded-md bg-emerald-50 p-2 text-xs font-bold text-emerald-700"
+                              : "mt-3 rounded-md bg-red-50 p-2 text-xs font-bold text-red-700"
+                          }
+                        >
+                          {tenantResetMessages[user.id].text}
+                        </p>
+                      ) : null}
                       <Button
                         type="button"
                         className="mt-3 h-9 w-full bg-orange-600 px-3 hover:bg-orange-500"

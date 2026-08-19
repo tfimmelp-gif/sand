@@ -69,6 +69,7 @@ export async function PATCH(req: Request) {
     autoRotationMode,
     autoRotationIntervalHours,
     newPassword,
+    clearAuthenticator,
   } = (await req.json()) as {
     userId?: string;
     assignedDomainId?: string | null;
@@ -81,6 +82,7 @@ export async function PATCH(req: Request) {
     autoRotationMode?: "SHORT" | "LONG";
     autoRotationIntervalHours?: number | null;
     newPassword?: string;
+    clearAuthenticator?: boolean;
   };
 
   if (!userId) {
@@ -112,6 +114,8 @@ export async function PATCH(req: Request) {
     nextAutoRotationAt?: Date | null;
     lastAutoRotationAt?: Date | null;
     passwordHash?: string;
+    authenticatorEnabled?: boolean;
+    authenticatorSecret?: string | null;
   } = {};
 
   if (newPassword !== undefined) {
@@ -133,6 +137,11 @@ export async function PATCH(req: Request) {
     }
 
     data.passwordHash = await bcrypt.hash(newPassword, 12);
+
+    if (clearAuthenticator) {
+      data.authenticatorEnabled = false;
+      data.authenticatorSecret = null;
+    }
   }
 
   if (assignedDomainId !== undefined) {
@@ -191,6 +200,15 @@ export async function PATCH(req: Request) {
       },
     },
   });
+
+  if (newPassword !== undefined) {
+    return NextResponse.json({
+      ok: true,
+      passwordReset: true,
+      authenticatorCleared: Boolean(clearAuthenticator),
+      user,
+    });
+  }
 
   return NextResponse.json(user);
 }
