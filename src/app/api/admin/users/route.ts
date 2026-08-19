@@ -68,6 +68,7 @@ export async function PATCH(req: Request) {
     autoRotationEnabled,
     autoRotationMode,
     autoRotationIntervalHours,
+    newPassword,
   } = (await req.json()) as {
     userId?: string;
     assignedDomainId?: string | null;
@@ -79,6 +80,7 @@ export async function PATCH(req: Request) {
     autoRotationEnabled?: boolean;
     autoRotationMode?: "SHORT" | "LONG";
     autoRotationIntervalHours?: number | null;
+    newPassword?: string;
   };
 
   if (!userId) {
@@ -109,13 +111,35 @@ export async function PATCH(req: Request) {
     autoRotationIntervalHours?: number | null;
     nextAutoRotationAt?: Date | null;
     lastAutoRotationAt?: Date | null;
+    passwordHash?: string;
   } = {};
+
+  if (newPassword !== undefined) {
+    if (newPassword.length < 8) {
+      return NextResponse.json({ error: "New password must be at least 8 characters." }, { status: 400 });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "Tenant user was not found." }, { status: 404 });
+    }
+
+    if (targetUser.role !== "WORKSPACE_USER") {
+      return NextResponse.json({ error: "Only tenant workspace passwords can be reset here." }, { status: 400 });
+    }
+
+    data.passwordHash = await bcrypt.hash(newPassword, 12);
+  }
 
   if (assignedDomainId !== undefined) {
     data.assignedDomainId = assignedDomainId || null;
   }
 
-  if (!assignedDomainId || assignedDomainExpiresAt !== undefined || assignedDomainExpiryBundle !== undefined) {
+  if (assignedDomainId !== undefined || assignedDomainExpiresAt !== undefined || assignedDomainExpiryBundle !== undefined) {
     data.assignedDomainExpiresAt = assignedDomainId
       ? parseExpiryInput({ expiresAt: assignedDomainExpiresAt, expiryBundle: assignedDomainExpiryBundle })
       : null;

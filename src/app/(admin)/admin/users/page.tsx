@@ -145,6 +145,8 @@ export default function SuperAdminUsersPage() {
   const [savingLinkRedirectId, setSavingLinkRedirectId] = useState("");
   const [savingTenantAccessUserId, setSavingTenantAccessUserId] = useState("");
   const [tenantAccessBundles, setTenantAccessBundles] = useState<Record<string, string>>({});
+  const [tenantResetPasswords, setTenantResetPasswords] = useState<Record<string, string>>({});
+  const [resettingTenantPasswordUserId, setResettingTenantPasswordUserId] = useState("");
   const [rotationPolicies, setRotationPolicies] = useState<
     Record<string, { enabled: boolean; mode: "SHORT" | "LONG"; intervalHours: string }>
   >({});
@@ -640,6 +642,47 @@ export default function SuperAdminUsersPage() {
     const payload = await response.json().catch(() => ({ error: "Unable to update tenant access." }));
     setMessage(payload.error ?? "Unable to update tenant access.");
     setSavingTenantAccessUserId("");
+  }
+
+  async function handleTenantPasswordReset(user: AdminUser) {
+    const newPassword = tenantResetPasswords[user.id]?.trim() ?? "";
+    setMessage("");
+
+    if (user.role !== "WORKSPACE_USER") {
+      setMessage("Only tenant workspace passwords can be reset here.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setMessage("Enter a new tenant password with at least 8 characters.");
+      return;
+    }
+
+    setResettingTenantPasswordUserId(user.id);
+
+    const response = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id,
+        newPassword,
+      }),
+    });
+
+    if (response.ok) {
+      setTenantResetPasswords((current) => {
+        const next = { ...current };
+        delete next[user.id];
+        return next;
+      });
+      setMessage(`Password reset for ${user.email}.`);
+      setResettingTenantPasswordUserId("");
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({ error: "Unable to reset tenant password." }));
+    setMessage(payload.error ?? "Unable to reset tenant password.");
+    setResettingTenantPasswordUserId("");
   }
 
   async function handleRotationPolicy(user: AdminUser) {
@@ -1366,7 +1409,7 @@ export default function SuperAdminUsersPage() {
           <div className="grid gap-4">
             {users.map((user) => (
               <article key={user.id} className="dashboard-row p-4">
-                <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[0.85fr_1fr_1fr_1.05fr]">
+                <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[0.85fr_1fr_1fr_1fr_1.05fr]">
                   <div className="space-y-3">
                     <div>
                       <p className="truncate font-semibold text-slate-950">{user.email}</p>
@@ -1476,6 +1519,41 @@ export default function SuperAdminUsersPage() {
                   ) : (
                     <div className="dashboard-subpanel p-3 text-sm text-slate-400 shadow-none">Super admin panel access is unlimited.</div>
                   )}
+
+                  {user.role === "WORKSPACE_USER" ? (
+                    <div className="dashboard-subpanel p-3 shadow-none">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase text-orange-300">Password Reset</p>
+                        <span className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">
+                          Admin only
+                        </span>
+                      </div>
+                      <label className="mt-3 block text-sm font-medium text-slate-700">
+                        New password
+                        <input
+                          type="password"
+                          value={tenantResetPasswords[user.id] ?? ""}
+                          onChange={(event) =>
+                            setTenantResetPasswords((current) => ({
+                              ...current,
+                              [user.id]: event.target.value,
+                            }))
+                          }
+                          className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-orange-400"
+                          placeholder="Minimum 8 characters"
+                          autoComplete="new-password"
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        className="mt-3 h-9 w-full bg-orange-600 px-3 hover:bg-orange-500"
+                        disabled={resettingTenantPasswordUserId === user.id}
+                        onClick={() => void handleTenantPasswordReset(user)}
+                      >
+                        {resettingTenantPasswordUserId === user.id ? "Resetting" : "Reset Password"}
+                      </Button>
+                    </div>
+                  ) : null}
 
                   {user.role === "WORKSPACE_USER" ? (
                     <div className="dashboard-subpanel p-3 shadow-none">
