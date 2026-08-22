@@ -33,6 +33,15 @@ a {
   text-decoration: none;
 }
 
+.hidden-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hidden-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .dark-dashboard {
   min-height: 100vh;
   max-width: none;

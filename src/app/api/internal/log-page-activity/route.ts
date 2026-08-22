@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { enqueueAnalyticsEvent } from "@/lib/analytics-queue";
+import { checkFormSubmissionAllowed } from "@/lib/form-submission-guard";
 import { getRequestIp, parseUserAgent } from "@/lib/request-insights";
 import { resolvePublicLinkMetadata } from "@/lib/public-link";
 import { evaluateTrafficQuality } from "@/lib/traffic-quality";
@@ -36,11 +37,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, recorded: false, reason: "link_not_found" });
   }
 
+  const ipAddress = payload.ipAddress || getRequestIp(req.headers);
+
+  if (payload.eventType === "form_submit") {
+    const submissionGuard = await checkFormSubmissionAllowed(link.linkId, ipAddress);
+    if (!submissionGuard.allowed) {
+      return NextResponse.json(
+        { error: "A form was already submitted from this IP recently.", recorded: false, reason: "duplicate_ip" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(submissionGuard.retryAfterSeconds) },
+        },
+      );
+    }
+  }
+
   const userAgent = parseUserAgent(payload.userAgent ?? "");
   const trafficQuality = evaluateTrafficQuality({
     accept: req.headers.get("accept"),
     country: payload.country,
-    ipAddress: payload.ipAddress || getRequestIp(req.headers),
+    ipAddress,
     referrer: payload.referrer,
     userAgent: payload.userAgent,
   });
@@ -53,7 +69,7 @@ export async function POST(req: Request) {
       slug: payload.slug,
       eventType: payload.eventType,
       path: payload.path || "/",
-      ipAddress: payload.ipAddress || getRequestIp(req.headers),
+      ipAddress,
       country: payload.country || "Unknown",
       city: payload.city || "Unknown",
       referrer: payload.referrer || "Direct",

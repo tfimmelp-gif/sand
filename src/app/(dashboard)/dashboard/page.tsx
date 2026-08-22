@@ -143,7 +143,6 @@ export default async function DashboardPage() {
         link: { userId: session.user.id, ...linkAccessWhere() },
       },
       orderBy: { timestamp: "desc" },
-      take: 25,
       include: {
         link: {
           select: {
@@ -228,7 +227,7 @@ export default async function DashboardPage() {
         </Card>
       </section>
 
-      <Card id="submissions">
+      <Card>
         <CardHeader>
           <CardTitle>Recent Links</CardTitle>
         </CardHeader>
@@ -260,13 +259,18 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="submissions">
         <CardHeader>
           <CardTitle>Recent Form Submissions</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent
+          aria-label="All form submissions"
+          className="hidden-scrollbar max-h-[32rem] overflow-auto"
+          role="region"
+          tabIndex={0}
+        >
           <table className="w-full border-collapse text-left text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-white">
               <tr className="border-b border-slate-200 text-slate-500">
                 <th className="py-3 pr-4 font-semibold">Page</th>
                 <th className="py-3 pr-4 font-semibold">Submitted Fields</th>
